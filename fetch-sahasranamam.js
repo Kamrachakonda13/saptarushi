@@ -31,6 +31,7 @@ const SOURCES = [
     te: 'శ్రీ విష్ణు సహస్రనామ స్తోత్రం',
     en: 'Sri Vishnu Sahasranamavali',
     url: 'https://stotranidhi.com/sri-vishnu-sahasra-namavali-in-telugu',
+    stotramUrl: 'https://stotranidhi.com/sri-vishnu-sahasranama-stotram',
     chapterSize: 100,
   },
   {
@@ -39,6 +40,7 @@ const SOURCES = [
     te: 'శ్రీ లలితా సహస్రనామ స్తోత్రం',
     en: 'Sri Lalitha Sahasranamavali',
     url: 'https://stotranidhi.com/sri-lalitha-sahasranamavali-in-telugu',
+    stotramUrl: 'https://stotranidhi.com/sri-lalitha-sahasranama-stotram',
     chapterSize: 100,
   },
   {
@@ -47,6 +49,7 @@ const SOURCES = [
     te: 'శ్రీ సీతా సహస్రనామ స్తోత్రం',
     en: 'Sri Sita Sahasranamavali',
     url: 'https://stotranidhi.com/sri-sita-sahasranamavali-in-telugu',
+    stotramUrl: 'https://stotranidhi.com/sri-sita-sahasranama-stotram-in-telugu',
     chapterSize: 100,
   },
 ];
@@ -81,6 +84,9 @@ function fetchUrl(url, depth = 0) {
   });
 }
 
+// Strip site furniture at extraction time; shared rules with every other fetcher.
+const { cleanScrapedLines } = require('./lib/scripture-clean');
+
 function extractTelugu(html) {
   let text = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -97,7 +103,7 @@ function extractTelugu(html) {
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
   const teluguRe = /[ఀ-౿]/;
-  return text.split('\n').map((l) => l.trim()).filter((l) => l && teluguRe.test(l));
+  return cleanScrapedLines(text.split('\n').map((l) => l.trim()).filter((l) => l && teluguRe.test(l)));
 }
 
 // Telugu digits, for reading the "N" markers the source prints every 10 names.
@@ -172,10 +178,119 @@ function extractNamavali(lines) {
   return { opening, names, phala, declared: lastMarkerVal };
 }
 
-function buildChapters({ opening, names, phala }, chapterSize) {
-  const chapters = [];
-  if (opening.length) chapters.push({ title: 'ఆరంభః · బీజమంత్రం', paras: opening });
+/* ---------------------------------------------------------------------------
+   Noise filter.
 
+   The source pages are wrapped in site furniture that must never reach
+   scripture: book advertisements, breadcrumb trails, the language switcher,
+   "click here to buy" calls to action, section navigation, social links and
+   the page <title>. Every rejection is listed explicitly rather than by length
+   heuristic, so new noise cannot slip through unnoticed.
+--------------------------------------------------------------------------- */
+const NOISE_PATTERNS = [
+  /^\[\s*గమనిక/,                 // [గమనిక: ... "Click here to buy"] book advert
+  /Click here to buy/i,
+  /^→|→/,                          // breadcrumb trail
+  />>\s*$|<<\s*$|^<<|<<పూర్వ/,      // section nav links  "... >>"  "<< పూర్వపీఠికా"
+  /^Read in\s/i,                   // language switcher bar
+  /^List of Stotras/i,
+  /- Stotra Nidhi\s*$/,            // page <title> suffix
+  /^[\"'(]?తెలుగు[\"'),]?$/,         // bare language name
+  /^Skip to content/i,
+  /Namaste !!/,
+  /Previous:|Next:|Artatrana|thoughts on/i,
+  /Share this:|Connect on|Follow on|Like\s+Loading/i,
+  /మా తదుపరి ప్రచురణ|వాట్సాప్|విప్రులకు, ద్విజులకు|తెలుగు,?$/,
+  /^Related:?$|^Posted in|^Links$/i,
+  /^శ్రీ .*స్తోత్రనిధి$/,            // "... స్తోత్రనిధి" print-ad lines
+  /^\(నిత్య పారాయణ గ్రంథము\)$/,
+  /^మరిన్ని /,
+];
+// Structural markers inside the text, not scripture.
+const STRUCTURAL = [
+  /^ధ్యానమ్?\s*\|?\s*$/,           // ధ్యానమ్ |
+  /^[\s|]*పూర్వపీఠిక[^\n]*$/,      // || పూర్వపీఠికా ||   << పూర్వపీఠికా
+  /^\[\*\s*అధికశ్లోకం/,           // [* అధికశ్లోకం -
+  /^\[\*\s*అధికశ్లోకము/,
+  /^లమిత్యాది పంచపూజా/,            // panchapuja heading ends the dhyanam
+];
+
+function isNoise(line) {
+  return NOISE_PATTERNS.some((re) => re.test(line));
+}
+function isStructural(line) {
+  return STRUCTURAL.some((re) => re.test(line));
+}
+
+/* Markers that END the dhyanam. Each source page names the next section
+   differently, so all known forms are listed explicitly:
+     Vishnu  "హరిః ఓం |" then "ఓం ... నమః |"  (thousand names begin)
+     Sita    "స్తోత్రమ్ |"                    (main body heading)
+     Lalitha "లమిత్యాది పంచపూజా |"            (panchapuja heading)
+   Without these the dhyanam swallows the rest of the page. */
+const DHYANAM_ENDS = [
+  /^హరిః/,          // harih-om divider
+  /^ఓం.*నమః/,       // a namavali name has started
+  /^స్తోత్రమ్/,      // "స్తోత్రమ్ |" body heading (Sita)
+  /^లమిత్యాది/,      // panchapuja heading (Lalitha)
+];
+
+/**
+ * Pull the opening chapters off the stotram page: the purvapithika, the
+ * anuvaka invocation and the dhyanam. The anuvaka can sit before the dhyanam
+ * header (Vishnu) or inside it, so both regions are scanned for it rather than
+ * assuming one position. The thousand-name body is already taken from the
+ * namavali page, so extraction stops at the first dhyanam terminator.
+ */
+function extractOpening(lines) {
+  const kept = lines.filter((l) => !isNoise(l));
+
+  const pv = kept.findIndex((l) => /^[\s|<>*-]*పూర్వపీఠిక/.test(l));
+  const dy = kept.findIndex((l) => /^ధ్యాన/.test(l));
+
+  // The anuvaka ("అస్య శ్రీ... మహామంత్రస్య ... అనుష్టుప్") is scripture.
+  const isAnuvaka = (l) =>
+    /అనుష్టుప్/.test(l) || /మహామంత్రస్య/.test(l) || /^\(అంగన్యాసః/.test(l);
+
+  const anuvaka = [];
+  const purvapithika = [];
+  const dhyanam = [];
+
+  // Region A: after the purvapithika header, up to the dhyanam header.
+  if (pv >= 0) {
+    const stop = dy > pv ? dy : kept.length;
+    for (let i = pv + 1; i < stop; i++) {
+      const l = kept[i];
+      if (isStructural(l)) continue;
+      if (isAnuvaka(l)) { anuvaka.push(l); continue; }
+      purvapithika.push(l);
+    }
+  }
+
+  // Region B: after the dhyanam header, up to the first terminator.
+  if (dy >= 0) {
+    for (let i = dy + 1; i < kept.length; i++) {
+      const l = kept[i];
+      if (DHYANAM_ENDS.some((re) => re.test(l))) break;
+      if (isStructural(l)) continue;
+      if (isAnuvaka(l)) { anuvaka.push(l); continue; }
+      dhyanam.push(l);
+    }
+  }
+
+  // A "purvapithika" of one line is really just a page title, not text. The
+  // Lalitha page has a header and nothing under it, so emit nothing.
+  const hasRealPurvapithika = purvapithika.filter((l) => /[।|]/.test(l)).length >= 2;
+
+  return {
+    anuvaka,
+    purvapithika: hasRealPurvapithika ? purvapithika : [],
+    dhyanam,
+  };
+}
+
+function buildChapters({ names, phala }, chapterSize) {
+  const chapters = [];
   for (let i = 0; i < names.length; i += chapterSize) {
     const slice = names.slice(i, i + chapterSize);
     const from = i + 1;
@@ -235,7 +350,31 @@ else if (typeof window !== 'undefined') window.${varName} = ${varName};
     const parsed = extractNamavali(lines);
     if (!parsed) { console.log(`  X ${spec.slug}: no namavali found — skipped`); continue; }
 
-    const chapters = buildChapters(parsed, spec.chapterSize);
+    // Opening chapters (purvapithika + dhyanam) come from the separate stotram
+    // page, which carries them; the namavali page starts straight at the names.
+    let opening = { purvapithika: [], dhyanam: [], anuvaka: [] };
+    if (spec.stotramUrl) {
+      try {
+        opening = extractOpening(extractTelugu(await fetchUrl(spec.stotramUrl)));
+      } catch (e) {
+        console.log(`  ! ${spec.slug}: opening verses unavailable (${e.message})`);
+      }
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+
+    const chapters = [];
+    if (opening.anuvaka && opening.anuvaka.length) {
+      chapters.push({ title: 'ఆనుష్టుపం · మంత్ర ప్రారంభం', paras: opening.anuvaka });
+    }
+    if (opening.purvapithika.length) {
+      chapters.push({ title: 'పూర్వపీఠికా', paras: opening.purvapithika });
+    }
+    if (opening.dhyanam.length) {
+      chapters.push({ title: 'ధ్యానం', paras: opening.dhyanam });
+    }
+
+    const namesChapters = buildChapters(parsed, spec.chapterSize);
+    chapters.push(...namesChapters);
     const target = path.join(CONTENT_DIR, spec.slug + '-content.js');
 
     // Guard: never overwrite with a short fetch, and cross-check the count
@@ -255,9 +394,10 @@ else if (typeof window !== 'undefined') window.${varName} = ${varName};
     const written = require(target).books[0];
     const allParas = written.chapters.reduce((n, c) => n + c.paras.length, 0);
     const placeholders = allParas && JSON.stringify(written).match(/placeholder|TODO|FIXME/gi);
-    console.log(`  OK ${spec.slug}: ${parsed.names.length} names (source declares ${parsed.declared}), ${chapters.length} chapters, ` +
-      `${allParas} paragraphs -> content/${spec.slug}-content.js` +
-      (placeholders ? '  !! CONTAINS PLACEHOLDER' : ''));
+    const titles = chapters.map((c) => c.title);
+    console.log(`  OK ${spec.slug}: ${parsed.names.length} names (source declares ${parsed.declared}), ` +
+      `${chapters.length} chapters, ${allParas} paragraphs`);
+    console.log('     chapters: ' + titles.join(' | '));
     await new Promise((r) => setTimeout(r, 1500));
   }
 })().catch((e) => { console.error(e); process.exit(1); });

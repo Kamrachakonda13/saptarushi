@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img" aria-label="Vayu">
+<defs><radialGradient id="g" cx="50%" cy="35%" r="75%">
+<stop offset="0%" stop-color="hsl(2,55%,82%)"/><stop offset="100%" stop-color="hsl(2,45%,38%)"/>
+</radialGradient></defs>
+<rect width="400" height="400" fill="url(#g)"/>
+<text x="200" y="235" font-family="Georgia,serif" font-size="170" fill="hsl(2,30%,22%)" text-anchor="middle">💨</text>
+</svg>

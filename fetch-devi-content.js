@@ -42,6 +42,12 @@ function fetchUrl(url, depth = 0) {
   });
 }
 
+// Site furniture (adverts, breadcrumbs, disclaimers, comment prompts) is
+// stripped at extraction time. This was the original defect: the cleaner ran
+// against a breadcrumb regex using \w, which is ASCII-only and never matched
+// the Telugu trails the site emits, so 188 lines of furniture reached the site.
+const { cleanScrapedLines } = require('./lib/scripture-clean');
+
 function extractTelugu(html) {
   let text = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
@@ -54,13 +60,15 @@ function extractTelugu(html) {
   text = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
   const teluguRe = /[ఀ-౿]/;
-  return text.split('\n').map(l => l.trim()).filter(l => l && teluguRe.test(l));
+  return cleanScrapedLines(text.split('\n').map(l => l.trim()).filter(l => l && teluguRe.test(l)));
 }
 
 const SAPTASHATI_CHAPTERS = [
   { num: 1,  slug: 'madhukaitabha-vadha',          url: 'https://stotranidhi.com/durga-saptasati-chapter-1-madhukaitabha-vadha-in-telugu/' },
   { num: 2,  slug: 'mahishasura-sainya-vadha',     url: 'https://stotranidhi.com/durga-saptasati-chapter-2-mahishasura-sainya-vadha-in-telugu/' },
-  { num: 3,  slug: 'mahishasura-vadha',            url: 'https://www.greatindian.net/devi-mahatmyam-durga-saptasati-chapter-3-in-telugu/' },
+  // greatindian.net now 301-redirects chapter 3 to an English-only page with no
+  // Telugu at all, so this chapter is read from stotranidhi.com instead.
+  { num: 3,  slug: 'mahishasura-vadha',            url: 'https://stotranidhi.com/durga-saptasati-chapter-3-mahishasura-vadha-in-telugu/' },
   { num: 4,  slug: 'sakradi-stuti',                url: 'https://stotranidhi.com/durga-saptasati-chapter-4-sakradi-stuti-in-telugu/' },
   { num: 5,  slug: 'devi-duta-samvadam',           url: 'https://stotranidhi.com/durga-saptasati-chapter-5-devi-duta-samvadam-in-telugu/' },
   { num: 6,  slug: 'dhumralochana-vadha',          url: 'https://stotranidhi.com/durga-saptasati-chapter-6-dhumralochana-vadha-in-telugu/' },

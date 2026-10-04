@@ -286,10 +286,18 @@ function deityImgAsset(slug, depth) {
   const f = 'assets/deities/' + slug + (DEITY_EXT[slug] || '.jpg');
   return fs.existsSync(path.join(ROOT, f)) ? rel(depth, f) : '';
 }
+const TEMPLE_IMG_EXTS = ['.jpg', '.png', '.webp', '.svg'];
+// "sanctum" is a real photo tier: 39 temples ship one and it was previously
+// never looked for, so vishalakshi (whose sanctum shot is its only photo)
+// rendered with no image at all.
+const TEMPLE_IMG_KINDS = ['temple', 'deity', 'sanctum'];
 function templeCardImg(cat, id) {
   const base = 'assets/temples/' + cat + '/' + id + '-';
-  if (fs.existsSync(path.join(ROOT, base + 'temple.jpg'))) return base + 'temple.jpg';
-  if (fs.existsSync(path.join(ROOT, base + 'deity.jpg'))) return base + 'deity.jpg';
+  for (const kind of TEMPLE_IMG_KINDS) {
+    for (const ext of TEMPLE_IMG_EXTS) {
+      if (fs.existsSync(path.join(ROOT, base + kind + ext))) return base + kind + ext;
+    }
+  }
   return '';
 }
 function templeCardImgRel(cat, id, depth) {
@@ -310,6 +318,7 @@ function templeDeityImage(t) {
     `assets/temples/${t.category}/${t.id}-deity.jpg`,
     `assets/temples/${t.category}/${t.id}-deity.png`,
     `assets/temples/${t.category}/${t.id}-deity.webp`,
+    `assets/temples/${t.category}/${t.id}-deity.svg`,
   ]);
 }
 
@@ -317,7 +326,10 @@ function templeCardImage(t) {
   return findExistingImage([
     `assets/temples/${t.category}/${t.id}-temple.jpg`,
     `assets/temples/${t.category}/${t.id}-temple.png`,
+    `assets/temples/${t.category}/${t.id}-temple.webp`,
+    `assets/temples/${t.category}/${t.id}-temple.svg`,
     `assets/temples/${t.category}/${t.id}-deity.jpg`,
+    `assets/temples/${t.category}/${t.id}-sanctum.jpg`,
   ]);
 }
 

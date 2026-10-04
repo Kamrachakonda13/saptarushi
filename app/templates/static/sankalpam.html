@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>మహాసంకల్పం — Vedic Sankalpam Generator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Noto+Sans+Telugu:wght@400;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        .sankalpam-container { max-width: 900px; margin: 0 auto; }
+        .sankalpam-form { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.06); margin-bottom: 1.5rem; }
+        .sankalpam-form .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .sankalpam-form .field { margin-bottom: 1rem; }
+        .sankalpam-form label { display: block; font-weight: 500; margin-bottom: 0.35rem; font-size: 0.9rem; color: #2B2B2B; }
+        .sankalpam-form input, .sankalpam-form select { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; font-family: inherit; }
+        .sankalpam-form select:focus, .sankalpam-form input:focus { outline: none; border-color: #E07B39; }
+        .btn-sankalpam { padding: 0.9rem 2rem; background: #E07B39; color: white; border: none; border-radius: 50px; font-size: 1rem; font-weight: 600; cursor: pointer; display: block; margin: 1rem auto 0; }
+        .btn-sankalpam:hover { background: #C96A2E; }
+        .sankalpam-output { background: #FFFDF8; border: 1px solid #C9A227; border-radius: 12px; padding: 2rem; font-family: 'Noto Sans Telugu', serif; font-size: 1.05rem; line-height: 1.9; white-space: pre-wrap; color: #2B2B2B; }
+        .sankalpam-output p { margin-bottom: 1rem; text-align: justify; }
+        .sankalpam-meta { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px dashed #ddd; margin-bottom: 1rem; font-size: 0.85rem; color: #6B6B6B; }
+        .sankalpam-actions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; }
+        .btn-ghost { padding: 0.6rem 1.5rem; background: white; color: #7B2D26; border: 1.5px solid #7B2D26; border-radius: 50px; font-weight: 500; cursor: pointer; font-size: 0.95rem; }
+        .btn-ghost:hover { background: #7B2D26; color: white; }
+        .region-badge { display: inline-block; background: #FEF3C7; color: #7B2D26; padding: 0.35rem 0.9rem; border-radius: 50px; font-size: 0.85rem; margin-bottom: 1rem; }
+        @media (max-width: 640px) { .sankalpam-form .field-row { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="ganesh-wrapper">
+            <img src="/static/ganesh.png" alt="Ganesh" class="ganesh-md"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div class="ganesh-fallback-sm">🕉️</div>
+        </div>
+
+        <a href="/" class="back-link">← Back</a>
+        <h1 class="page-title">మహాసంకల్పం — Sankalpam Generator</h1>
+        <p class="subtitle" style="text-align:center; margin-bottom:2rem;">
+            శాస్త్రీయ పద్ధతిలో, ప్రాంతీయ వివరాలతో కూడిన పూర్తి సంకల్ప పాఠం
+        </p>
+
+        <div class="sankalpam-container">
+            <form id="sankalpam-form" class="sankalpam-form">
+                <div class="field">
+                    <label for="region">ప్రాంతం (Region) *</label>
+                    <select id="region" name="region" required>
+                        <option value="">-- ఎంచుకోండి --</option>
+                    </select>
+                </div>
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="name">మీ పేరు (Your Name)</label>
+                        <input type="text" id="name" name="name" placeholder="ఉదా: రామకృష్ణ">
+                    </div>
+                    <div class="field">
+                        <label for="gotra">గోత్రం (Gotra)</label>
+                        <input type="text" id="gotra" name="gotra" placeholder="ఉదా: కాశ్యప">
+                    </div>
+                </div>
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="nakshatra">నక్షత్రం (Nakshatra)</label>
+                        <input type="text" id="nakshatra" name="nakshatra" placeholder="ఉదా: రోహిణి">
+                    </div>
+                    <div class="field">
+                        <label for="rashi">రాశి (Rashi)</label>
+                        <input type="text" id="rashi" name="rashi" placeholder="ఉదా: వృషభ">
+                    </div>
+                </div>
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="spouse_name">భార్య / భర్త పేరు (Spouse Name)</label>
+                        <input type="text" id="spouse_name" name="spouse_name" placeholder="Optional">
+                    </div>
+                    <div class="field">
+                        <label for="spouse_gotra">భార్య / భర్త గోత్రం (Spouse Gotra)</label>
+                        <input type="text" id="spouse_gotra" name="spouse_gotra" placeholder="Optional">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-sankalpam">సంకల్పం చూపించు →</button>
+            </form>
+
+            <div id="sankalpam-output" class="sankalpam-output" style="display:none;"></div>
+        </div>
+
+        <footer class="site-footer">
+            <p>Powered by classical Vedic principles</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/sankalpam.js"></script>
+</body>
+</html>

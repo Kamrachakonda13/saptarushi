@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+.DS_Store
+
+# Secrets / credentials
+content/token.txt
+content/admin-auth.json
+
+# Third-party source PDFs used for scraping (147MB, not website content)
+downloaded-files-from-freegurukul/
+
+# Uploaded audio (large binaries; kept out of git history)
+media/audio/
+
+# Local backups
+*.bak
+.content-backup/

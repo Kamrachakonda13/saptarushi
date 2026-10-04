@@ -1,9 +1,15 @@
 # Saptarushi — project dependencies (reference)
 #
-# NOTE: Saptarushi is a static site. There are NO Python packages and no
-# pip requirements — a Python virtual environment is not needed to build or
+# NOTE: Saptarushi is a static site. There are NO required Python packages and
+# no pip requirements — a Python virtual environment is NOT needed to build or
 # serve it. This file is a *reference index* of every external dependency,
 # pinned to the exact versions the site uses.
+#
+# OPTIONAL: the admin portal's "extract text from PDF" feature does use Python.
+# To enable it:  python3 -m venv .venv
+#                .venv/bin/pip install -r requirements-pdf.txt
+# See requirements-pdf.txt. Without it the server still runs and PDF
+# extraction fails gracefully with an explanatory message.
 
 # ---------------------------------------------------------------------------
 # 1. Runtime tooling (system)

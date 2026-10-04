@@ -3,6 +3,9 @@ __pycache__/
 .DS_Store
 
 # Secrets / credentials
+.env
+.env.local
+.env.*.local
 content/token.txt
 content/admin-auth.json
 

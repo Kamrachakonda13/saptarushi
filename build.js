@@ -5,6 +5,8 @@
 const fs = require('fs');
 const path = require('path');
 
+require('./lib/env').loadEnv();
+
 const ROOT = __dirname;
 const D = require('./data.js');
 

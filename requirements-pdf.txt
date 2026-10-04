@@ -1,0 +1,18 @@
+# Optional Python dependencies for the admin PDF-text-extraction feature.
+#
+# The site itself is pure static HTML/CSS/JS and needs NO Python at all:
+#   node build.js     # generate pages
+#   node serve.js     # serve the site
+#
+# Python is only needed for POST /api/extract-pdf and the admin portal's
+# "extract text from PDF" feature (see the PDFTextExtractor in serve.js).
+# Without it, serve.js still runs — uploads and PDF extraction just fail
+# gracefully with an explanatory message.
+#
+# Setup:
+#   python3 -m venv .venv
+#   .venv/bin/pip install -r requirements-pdf.txt
+#
+# .venv/ is gitignored and is never committed.
+pdfminer.six>=20231228
+pypdf>=4.0.0

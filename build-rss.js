@@ -3,8 +3,12 @@
 const fs = require('fs');
 const path = require('path');
 
+require('./lib/env').loadEnv();
+
 const ROOT = __dirname;
-const SITE_URL = process.env.SITE_URL || 'https://saptarushi.example';
+// Public origin for <link>/<guid>. Set SITE_URL in .env (or the environment)
+// to the real deployment origin; the placeholder must be replaced before launch.
+const SITE_URL = String(process.env.SITE_URL || 'https://saptarushi.example').replace(/\/+$/, '');
 const SITE_TITLE = 'Saptarushi — తెలుగు భక్తి';
 const SITE_DESC = 'Daily Telugu devotional content: stotras, mantras, poojas, prasadam and books.';
 

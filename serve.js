@@ -8,14 +8,19 @@ const crypto = require('crypto');
 const { execFile } = require('child_process');
 
 const root = __dirname;
-const port = Number(process.argv[2] || 4173);
+require('./lib/env').loadEnv();
+// CLI arg wins, then $PORT, then 4173.
+const port = Number(process.argv[2] || process.env.PORT || 4173);
 
 // ---------------------------------------------------------------------------
 // Admin authentication
-// Passwords are never returned to the browser and are never stored in plaintext.
-// Set ADMIN_USER / ADMIN_PASS for the initial administrator credentials. On the
-// first start, the legacy password is accepted only as a migration fallback;
-// changing the password creates a persistent salted PBKDF2 hash.
+// The password is NEVER stored in source. Put ADMIN_PASS in .env (gitignored)
+// or export it in the environment. There is deliberately no built-in default:
+// if it is missing the server refuses to start rather than falling back to a
+// well-known password. Passwords are never returned to the browser and are
+// never stored in plaintext — only a salted PBKDF2 hash in content/admin-auth.json
+// (also gitignored). Changing the password via the admin portal re-hashes it.
+// ---------------------------------------------------------------------------
 const ADMIN_USER = String(process.env.ADMIN_USER || 'admin').trim();
 const AUTH_STORE = path.join(__dirname, 'content', 'admin-auth.json');
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
@@ -35,10 +40,25 @@ function loadAuth() {
   try {
     if (fs.existsSync(AUTH_STORE)) return JSON.parse(fs.readFileSync(AUTH_STORE, 'utf8'));
   } catch (_) {}
-  const initial = process.env.ADMIN_PASS || 'saptarushi';
+  // First run: seed the credential store from ADMIN_PASS.
+  const initial = String(process.env.ADMIN_PASS || '');
+  if (!initial) {
+    console.error('\n  FATAL: ADMIN_PASS is not set.\n');
+    console.error('  Create a .env file next to serve.js (copy .env.example) containing:');
+    console.error('      ADMIN_USER=admin');
+    console.error('      ADMIN_PASS=<a strong password you choose>\n');
+    console.error('  Or export it for one run:  ADMIN_PASS=... node serve.js\n');
+    console.error('  There is no default password on purpose. Aborting.\n');
+    process.exit(1);
+  }
+  if (initial.length < 10) {
+    console.error('\n  FATAL: ADMIN_PASS must be at least 10 characters. Aborting.\n');
+    process.exit(1);
+  }
   const record = hashPassword(initial);
   const auth = { username: ADMIN_USER, ...record, createdAt: new Date().toISOString() };
   safeWrite(AUTH_STORE, JSON.stringify(auth, null, 2));
+  console.log('→ Created credential store content/admin-auth.json from ADMIN_PASS.');
   return auth;
 }
 function saveAuth(username, password) {

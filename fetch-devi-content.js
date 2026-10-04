@@ -9,16 +9,35 @@ const https = require('https');
 const CONTENT_DIR = path.join(__dirname, 'content');
 if (!fs.existsSync(CONTENT_DIR)) fs.mkdirSync(CONTENT_DIR, { recursive: true });
 
-function fetchUrl(url) {
+function fetchUrl(url, depth = 0) {
   return new Promise((resolve, reject) => {
+    if (depth > 5) return reject(new Error('too many redirects'));
     https.get(url, { headers: { 'User-Agent': 'Saptarushi-Content-Fetcher/1.0' } }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return fetchUrl(res.headers.location).then(resolve).catch(reject);
+        res.resume();
+        return fetchUrl(new URL(res.headers.location, url).href, depth + 1).then(resolve, reject);
       }
-      if (res.statusCode !== 200) return reject(new Error('HTTP ' + res.statusCode));
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => resolve(data));
+      if (res.statusCode !== 200) { res.resume(); return reject(new Error('HTTP ' + res.statusCode)); }
+      // Collect raw Buffers and decode ONCE at the end. Concatenating chunks as
+      // strings (`data += c`) decodes each chunk independently, which destroys
+      // any multi-byte Telugu character split across a chunk boundary and
+      // silently yields U+FFFD.
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        const buf = Buffer.concat(chunks);
+        let charset = (String(res.headers['content-type'] || '').match(/charset=([\w-]+)/i) || [])[1];
+        if (!charset) {
+          // Sniff a <meta charset> from the first 2KB, then default to UTF-8.
+          const head = buf.slice(0, 2048).toString('latin1');
+          charset = (head.match(/<meta[^>]+charset=["']?([\w-]+)/i) || [])[1] || 'utf-8';
+        }
+        try {
+          resolve(buf.toString(charset.toLowerCase() === 'utf8' ? 'utf8' : charset));
+        } catch (_) {
+          resolve(buf.toString('utf8'));
+        }
+      });
     }).on('error', reject);
   });
 }

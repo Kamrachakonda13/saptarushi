@@ -6,9 +6,10 @@
      – a beautiful track list (title · duration · play · repeat)
      – folder-grouped views for folder uploads
      – in-page player bar with repeat toggle
-   Exposes window.MediaPlayer.init() which scans the page for the right
-   containers.
-   ============================================================================ */
+   Exposes window.MediaPlayer.play/stopAll/fmtDuration plus renderList,
+  renderFolders and wireNativeAudios. There is no init() — callers wire up
+  the containers they need.
+  ============================================================================ */
 (function () {
   'use strict';
 
@@ -22,8 +23,11 @@
 
   function fmtDuration(sec) {
     if (!isFinite(sec) || sec < 0) return '—';
-    const m = Math.floor(sec / 60);
-    const s = Math.round(sec % 60);
+    // Round to whole seconds FIRST, then split, so 59.7 becomes 60s -> 1:00
+    // instead of the impossible "00:60".
+    const total = Math.round(sec);
+    const m = Math.floor(total / 60);
+    const s = total % 60;
     return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
   }
 
@@ -281,7 +285,9 @@
   /* wire up native <audio> elements for formats the <audio> tag can play */
   function wireNativeAudios(root) {
     root = root || document;
-    root.querySelectorAll('audio[data-src], audio.' + '' + '').forEach(() => {});
+    root.querySelectorAll('audio[data-src]').forEach(a => {
+      if (!a.src && a.dataset.src) a.src = a.dataset.src;
+    });
     root.querySelectorAll('audio[controls]').forEach(a => {
       a.controls = true;
     });

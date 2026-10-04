@@ -25,7 +25,7 @@ function head(title, desc, depth, extra) {
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Karla:wght@400;500;600;700&family=Noto+Serif+Telugu:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="${rel(depth, 'styles.css')}?v=37"/>
+<link rel="stylesheet" href="${rel(depth, 'styles.css')}?v=38"/>
 ${extra || ''}
 </head>
 <body>`;
@@ -157,6 +157,11 @@ function header(rootDepth, active) {
         <a href="${about}"${cls('about')}>About</a>
       </nav>
       <div class="header-right">
+        <div class="site-search" role="search">
+          <label class="sr-only" for="searchInput">Search stotras, mantras, poojas, temples and books</label>
+          <input id="searchInput" type="search" autocomplete="off" placeholder="Search…" aria-label="Search"/>
+          <div id="searchResults" class="search-results" role="listbox" aria-label="Search results"></div>
+        </div>
         <span class="textsize-label">Text size</span>
         <div class="textsize-group" role="group" aria-label="Text size">
           <button class="textsize-btn" data-size="base" aria-label="Text size A">A</button>
@@ -350,6 +355,7 @@ function fabAndShell(rootDepth, extraScripts) {
 
   <script src="${base}data.js"></script>
   <script src="${base}stotras-runtime.js"></script>
+  <script src="${base}search.js"></script>
   <script src="${base}app.js" data-base="${base}"></script>
   ${extraScripts || ''}
 </body>
@@ -1048,7 +1054,8 @@ function bookPage(slug) {
     </div>
   </section>
   </main>`);
-  parts.push(fabAndShell(1));
+  parts.push(fabAndShell(1, `<script src="${rel(1, 'media-player.js')}"></script>
+  <script src="${rel(1, 'book-view.js')}"></script>`));
   parts.push(`</div>`);
   return parts.join('\n');
 }

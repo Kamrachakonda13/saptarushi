@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Andal — Telugu bhakti | Saptarushi</title>
-<meta name="description" content="The only female Alvar — author of Tiruppavai and Nachiyar Thirumozhi. Listen to Andal bhajans and read Andal books in the browser."/>
+<title>Andal / Goda — Telugu bhakti | Saptarushi</title>
+<meta name="description" content="The only female Alvar — author of Tiruppavai and Nachiyar Thirumozhi. Listen to Andal / Goda bhajans and read Andal / Goda books in the browser."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Karla:wght@400;500;600;700&family=Noto+Serif+Telugu:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="../styles.css?v=37"/>
+<link rel="stylesheet" href="../styles.css?v=38"/>
 
 </head>
 <body>
@@ -45,6 +45,11 @@
         <a href="../about.html">About</a>
       </nav>
       <div class="header-right">
+        <div class="site-search" role="search">
+          <label class="sr-only" for="searchInput">Search stotras, mantras, poojas, temples and books</label>
+          <input id="searchInput" type="search" autocomplete="off" placeholder="Search…" aria-label="Search"/>
+          <div id="searchResults" class="search-results" role="listbox" aria-label="Search results"></div>
+        </div>
         <span class="textsize-label">Text size</span>
         <div class="textsize-group" role="group" aria-label="Text size">
           <button class="textsize-btn" data-size="base" aria-label="Text size A">A</button>
@@ -65,7 +70,7 @@
 <nav class="back-bar" aria-label="Back"><a class="back-btn" href="../index.html">← Home</a></nav>
 <main>
 <section class="section-page">
-    <div class="section-title-row"><h2 class="section-title">Choose your deity</h2><span class="section-count">71 sections</span></div>
+    <div class="section-title-row"><h2 class="section-title">Choose your deity</h2><span class="section-count">54 sections</span></div>
     <div class="deity-rail">
 <a class="deity-pill" title="Brahma" href="../deity/brahma.html">
       <img class="pill-icon" src="../assets/deities/brahma.svg" alt="Brahma" loading="lazy"/>
@@ -147,13 +152,9 @@
       <img class="pill-icon" src="../assets/deities/sita.svg" alt="Sita" loading="lazy"/>
       <span class="pill-label">Sita</span>
     </a>
-<a class="deity-pill" title="Andal / Goda" href="../deity/and.html">
-      <img class="pill-icon" src="../assets/deities/and.svg" alt="Andal / Goda" loading="lazy"/>
+<a class="deity-pill active" title="Andal / Goda" href="../deity/andal.html">
+      <img class="pill-icon" src="../assets/deities/andal.svg" alt="Andal / Goda" loading="lazy"/>
       <span class="pill-label">Andal / Goda</span>
-    </a>
-<a class="deity-pill active" title="Andal" href="../deity/andal.html">
-      <span class="pill-symbol" aria-hidden="true">❁</span>
-      <span class="pill-label">Andal</span>
     </a>
 <a class="deity-pill" title="Annapurna" href="../deity/annapurna.html">
       <span class="pill-symbol" aria-hidden="true">🍚</span>
@@ -251,10 +252,6 @@
       <span class="pill-symbol" aria-hidden="true">☠</span>
       <span class="pill-label">Yama</span>
     </a>
-<a class="deity-pill" title="Kubera" href="../deity/kubera.html">
-      <img class="pill-icon" src="../assets/deities/kubera.svg" alt="Kubera" loading="lazy"/>
-      <span class="pill-label">Kubera</span>
-    </a>
 <a class="deity-pill" title="Soma" href="../deity/soma.html">
       <span class="pill-symbol" aria-hidden="true">🌙</span>
       <span class="pill-label">Soma</span>
@@ -270,18 +267,6 @@
 <a class="deity-pill" title="Shesha" href="../deity/shesha.html">
       <span class="pill-symbol" aria-hidden="true">🐍</span>
       <span class="pill-label">Shesha</span>
-    </a>
-<a class="deity-pill active" title="Andal" href="../deity/andal.html">
-      <span class="pill-symbol" aria-hidden="true">❁</span>
-      <span class="pill-label">Andal</span>
-    </a>
-<a class="deity-pill" title="Annapurna" href="../deity/annapurna.html">
-      <span class="pill-symbol" aria-hidden="true">🍚</span>
-      <span class="pill-label">Annapurna</span>
-    </a>
-<a class="deity-pill" title="Ashta Lakshmi" href="../deity/ashta-lakshmi.html">
-      <span class="pill-symbol" aria-hidden="true">🪷</span>
-      <span class="pill-label">Ashta Lakshmi</span>
     </a>
 <a class="deity-pill" title="Dakshinamurthy" href="../deity/dakshinamurthy.html">
       <span class="pill-symbol" aria-hidden="true">🕉️</span>
@@ -303,69 +288,21 @@
       <span class="pill-symbol" aria-hidden="true">🐂</span>
       <span class="pill-label">Nandi</span>
     </a>
-<a class="deity-pill" title="Tulasi" href="../deity/tulasi.html">
-      <img class="pill-icon" src="../assets/deities/tulasi.svg" alt="Tulasi" loading="lazy"/>
-      <span class="pill-label">Tulasi</span>
-    </a>
-<a class="deity-pill" title="Gayatri" href="../deity/gayatri.html">
-      <img class="pill-icon" src="../assets/deities/gayatri.svg" alt="Gayatri" loading="lazy"/>
-      <span class="pill-label">Gayatri</span>
-    </a>
-<a class="deity-pill" title="Agni" href="../deity/agni.html">
-      <img class="pill-icon" src="../assets/deities/agni.svg" alt="Agni" loading="lazy"/>
-      <span class="pill-label">Agni</span>
-    </a>
-<a class="deity-pill" title="Varuna" href="../deity/varuna.html">
-      <img class="pill-icon" src="../assets/deities/varuna.svg" alt="Varuna" loading="lazy"/>
-      <span class="pill-label">Varuna</span>
-    </a>
-<a class="deity-pill" title="Indra" href="../deity/indra.html">
-      <img class="pill-icon" src="../assets/deities/indra.svg" alt="Indra" loading="lazy"/>
-      <span class="pill-label">Indra</span>
-    </a>
-<a class="deity-pill" title="Vayu" href="../deity/vayu.html">
-      <span class="pill-symbol" aria-hidden="true">💨</span>
-      <span class="pill-label">Vayu</span>
-    </a>
-<a class="deity-pill" title="Yama" href="../deity/yama.html">
-      <span class="pill-symbol" aria-hidden="true">☠</span>
-      <span class="pill-label">Yama</span>
-    </a>
-<a class="deity-pill" title="Kubera" href="../deity/kubera.html">
-      <img class="pill-icon" src="../assets/deities/kubera.svg" alt="Kubera" loading="lazy"/>
-      <span class="pill-label">Kubera</span>
-    </a>
-<a class="deity-pill" title="Soma" href="../deity/soma.html">
-      <span class="pill-symbol" aria-hidden="true">🌙</span>
-      <span class="pill-label">Soma</span>
-    </a>
-<a class="deity-pill" title="Ashta Vasus" href="../deity/ashta-vasus.html">
-      <span class="pill-symbol" aria-hidden="true">8️⃣</span>
-      <span class="pill-label">Ashta Vasus</span>
-    </a>
-<a class="deity-pill" title="Ekadasha Rudras" href="../deity/ekadasha-rudras.html">
-      <span class="pill-symbol" aria-hidden="true">🔱</span>
-      <span class="pill-label">Ekadasha Rudras</span>
-    </a>
-<a class="deity-pill" title="Shesha" href="../deity/shesha.html">
-      <span class="pill-symbol" aria-hidden="true">🐍</span>
-      <span class="pill-label">Shesha</span>
-    </a>
 </div>
   </section>
 <section class="section-page">
     <div class="hero-flex" style="gap:1.5rem;margin-bottom:2rem">
       <div class="min-w-0 flex-1">
         <p class="hero-eyebrow">Deity</p>
-        <h1 class="hero-title" style="max-width:none">Andal</h1>
-        <p class="font-telugu text-xl" style="color:var(--ink-80);margin-top:0.25rem" lang="te">శ్రీ ఆండాళ్</p>
+        <h1 class="hero-title" style="max-width:none">Andal / Goda</h1>
+        <p class="font-telugu text-xl" style="color:var(--ink-80);margin-top:0.25rem" lang="te">శ్రీ ఆండాల్ / గోదా దేవి</p>
         <p class="hero-desc">The only female Alvar — author of Tiruppavai and Nachiyar Thirumozhi.</p>
         <div class="flex" style="gap:2rem;margin-top:1.25rem;font-size:1rem">
-          <span><strong class="font-display" style="font-size:1.25rem">2</strong><span style="margin-left:0.375rem;color:var(--ink-70)">books</span></span>
+          <span><strong class="font-display" style="font-size:1.25rem">3</strong><span style="margin-left:0.375rem;color:var(--ink-70)">books</span></span>
         </div>
         
       </div>
-      
+      <img class="hero-img deity-hero-img" src="../assets/deities/andal.svg" alt="Andal / Goda"/>
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="books" aria-pressed="true">Books</button>
@@ -376,7 +313,7 @@
     </div>
     <div id="panelBooks">
       <div class="grid-books"><a class="book-card content-item-card" href="../stotras/tiruppavai.html">
-    
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Tiruppavai" loading="lazy"/>
     <div class="min-w-0 flex-1">
       <p class="book-te" lang="te">తిరుప్పావై</p>
       <p class="book-en">Tiruppavai</p>
@@ -384,24 +321,40 @@
     </div>
   </a>
 <a class="book-card content-item-card" href="../stotras/goda-devi-ashtottara-shatanamavali.html">
-    
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Sri Goda Devi Ashtottara Shatanama Stotram" loading="lazy"/>
     <div class="min-w-0 flex-1">
       <p class="book-te" lang="te">శ్రీ గోదాష్టోత్తరశతనామ స్తోత్రం</p>
       <p class="book-en">Sri Goda Devi Ashtottara Shatanama Stotram</p>
       <p class="book-meta">Ashtottara</p>
+    </div>
+  </a>
+<a class="book-card content-item-card" href="../stotras/akkara-adisil.html">
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Akkara Adisil" loading="lazy"/>
+    <div class="min-w-0 flex-1">
+      <p class="book-te" lang="te">శ్రీ Acker Adisil</p>
+      <p class="book-en">Akkara Adisil</p>
+      <p class="book-meta">Pongal</p>
     </div>
   </a></div>
     </div>
     <div id="panelPoojas" style="display:none">
       <div class="section-title-row" style="margin-top:1.5rem">
         <h2 class="section-title">Poojas</h2>
-        <span class="section-count">1 poojas</span>
+        <span class="section-count">2 poojas</span>
       </div>
       <div class="grid-books"><a class="book-card content-item-card" href="../poojas/andal-puja-vidhanam.html">
-    
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Andal Puja Vidhanam" loading="lazy"/>
     <div class="min-w-0 flex-1">
       <p class="book-te" lang="te">శ్రీ ఆండాళ్ పూజా విధానం</p>
       <p class="book-en">Andal Puja Vidhanam</p>
+      <p class="book-meta">Pooja Vidhanam</p>
+    </div>
+  </a>
+<a class="book-card content-item-card" href="../poojas/akkara-adisil-pooja.html">
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Akkara Adisil Pooja" loading="lazy"/>
+    <div class="min-w-0 flex-1">
+      <p class="book-te" lang="te"> Acker Adisil Pooja</p>
+      <p class="book-en">Akkara Adisil Pooja</p>
       <p class="book-meta">Pooja Vidhanam</p>
     </div>
   </a></div>
@@ -409,10 +362,10 @@
 <div id="panelMantras" style="display:none">
       <div class="section-title-row" style="margin-top:1.5rem">
         <h2 class="section-title">Mantras</h2>
-        <span class="section-count">2 mantras</span>
+        <span class="section-count">3 mantras</span>
       </div>
       <div class="grid-books"><a class="book-card content-item-card" href="../mantras/om-godayai-namah.html">
-    
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Om Godayai Namah" loading="lazy"/>
     <div class="min-w-0 flex-1">
       <p class="book-te" lang="te">ఓం గోదాయై నమః</p>
       <p class="book-en">Om Godayai Namah</p>
@@ -420,23 +373,39 @@
     </div>
   </a>
 <a class="book-card content-item-card" href="../mantras/andal-gayatri-mantra.html">
-    
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Andal Gayatri Mantra" loading="lazy"/>
     <div class="min-w-0 flex-1">
       <p class="book-te" lang="te">ఆండాళ్ గాయత్రీ మంత్రం</p>
       <p class="book-en">Andal Gayatri Mantra</p>
       <p class="book-meta">Gayatri</p>
+    </div>
+  </a>
+<a class="book-card content-item-card" href="../mantras/andal-bija-mantra.html">
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Andal Bija Mantra" loading="lazy"/>
+    <div class="min-w-0 flex-1">
+      <p class="book-te" lang="te">Andal Bija Mantram</p>
+      <p class="book-en">Andal Bija Mantra</p>
+      <p class="book-meta">Bija Mantra</p>
     </div>
   </a></div>
     </div>
 <div id="panelHoma" style="display:none">
       <div class="section-title-row" style="margin-top:1.5rem">
         <h2 class="section-title">Homa</h2>
-        <span class="section-count">1 homa texts</span>
+        <span class="section-count">2 homa texts</span>
       </div>
       <div class="grid-books"><a class="book-card content-item-card" href="../homa/andal-homam.html">
-    
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Andal Homam" loading="lazy"/>
     <div class="min-w-0 flex-1">
       <p class="book-te" lang="te">శ్రీ ఆండాళ్ హోమం</p>
+      <p class="book-en">Andal Homam</p>
+      <p class="book-meta">Homa</p>
+    </div>
+  </a>
+<a class="book-card content-item-card" href="../homa/andal-homa.html">
+    <img class="book-cover-img" src="../assets/deities/andal.svg" alt="Andal Homam" loading="lazy"/>
+    <div class="min-w-0 flex-1">
+      <p class="book-te" lang="te">Andal Homa</p>
       <p class="book-en">Andal Homam</p>
       <p class="book-meta">Homa</p>
     </div>
@@ -516,6 +485,7 @@
 
   <script src="../data.js"></script>
   <script src="../stotras-runtime.js"></script>
+  <script src="../search.js"></script>
   <script src="../app.js" data-base="../"></script>
   
 </body>

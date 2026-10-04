@@ -43,6 +43,14 @@
 
   function fontClass(lang) { return lang === 'sa' ? 'font-sa' : lang === 'te' ? 'font-te' : 'font-en'; }
 
+  // Swap only the font-* class. Assigning className wholesale would drop
+  // 'book-editable-box', which carries the reader card styling.
+  var FONT_CLASSES = ['font-en', 'font-te', 'font-sa'];
+  function setFontClass(el, lang) {
+    FONT_CLASSES.forEach(function (c) { el.classList.remove(c); });
+    el.classList.add(fontClass(lang));
+  }
+
   function addCoverNote(book, layout, onSave, onCancel) {
     var aside = $('.book-aside', layout);
     var figure = $('.book-cover-fig', aside);
@@ -151,7 +159,7 @@
         txt = (mainLang === l) ? (book.text || '') : (book.textEn || book.text || '');
       }
       textEl.textContent = txt || (l === 'en' ? 'No English text yet. Add it from the admin Books page.' : (l === 'te' ? 'తెలుగు పాఠం ఇంకా చేర్చలేదు — అడ్మిన్ పేజీ నుండి జోడించండి.' : 'संस्कृत पाठ अभी तक नहीं जोड़ा गया।'));
-      textEl.className = 'sankalpam-text ' + fontClass(l === 'en' ? (detectLang(textEl.textContent)) : l);
+      setFontClass(textEl, l === 'en' ? detectLang(textEl.textContent) : l);
     }
 
     reader.appendChild(tabs);
@@ -175,11 +183,11 @@
           if (target === 'te' && window.LangLib) {
             textEl.textContent = LangLib.toTelugu(txt);
             originalTexts[currentLang] = textEl.textContent;
-            textEl.className = 'sankalpam-text font-te';
+            setFontClass(textEl, 'te');
           } else if (target === 'sa' && window.LangLib) {
             textEl.textContent = LangLib.toDevanagari(txt);
             originalTexts[currentLang] = textEl.textContent;
-            textEl.className = 'sankalpam-text font-sa';
+            setFontClass(textEl, 'sa');
           }
         },
         onSave: function () {
@@ -189,7 +197,7 @@
         onCancel: function () {
           // Restore original text for current language
           textEl.textContent = originalTexts[currentLang] || '';
-          textEl.className = 'sankalpam-text ' + fontClass(currentLang === 'en' ? detectLang(textEl.textContent) : currentLang);
+          setFontClass(textEl, currentLang === 'en' ? detectLang(textEl.textContent) : currentLang);
         }
       });
 
@@ -211,7 +219,7 @@
     function saveBookEdits() {
       var token = localStorage.getItem('saptarushi-admin-token') || '';
       if (!token) {
-        alert('Please log in as Admin first to save edits. Go to the Admin portal (default: admin / saptarushi).');
+        alert('Please log in as Admin first to save edits. Open the Admin portal and sign in.');
         return;
       }
       var payload = Object.assign({}, book, {
@@ -274,10 +282,16 @@
 
   function enhanceStaticBook(savedBook) {
     var layout = $('.book-layout');
-    var chapters = $$('.chapter-body', layout);
-    if (!layout || !chapters.length || !window.TextEditor) return;
+    if (!layout) return;
+    // The generator emits .chapter-block for each chapter section.
+    var chapters = $$('.chapter-block', layout);
+    if (!chapters.length) return;
 
+    // Applying admin-saved text works for everyone, so do it before the
+    // TextEditor check — editing itself is admin-only.
     applyStaticBookData(savedBook, chapters);
+    if (!window.TextEditor) return;
+
     var original = staticBookData(chapters);
     var titleEl = $('.book-aside .book-h1', layout);
     if (titleEl && savedBook && savedBook.title) titleEl.textContent = savedBook.title;
@@ -302,7 +316,7 @@
         coverText: coverNote ? coverNote.textContent.trim() : '',
         updated: new Date().toISOString()
       };
-      fetch('../api/book', {
+      fetch(baseDir + 'api/book', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
         body: JSON.stringify({ data: JSON.stringify(payload) })

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Karla:wght@400;500;600;700&family=Noto+Serif+Telugu:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="../styles.css?v=37"/>
+<link rel="stylesheet" href="../styles.css?v=38"/>
 
 </head>
 <body>
@@ -45,6 +45,11 @@
         <a href="../about.html">About</a>
       </nav>
       <div class="header-right">
+        <div class="site-search" role="search">
+          <label class="sr-only" for="searchInput">Search stotras, mantras, poojas, temples and books</label>
+          <input id="searchInput" type="search" autocomplete="off" placeholder="Search…" aria-label="Search"/>
+          <div id="searchResults" class="search-results" role="listbox" aria-label="Search results"></div>
+        </div>
         <span class="textsize-label">Text size</span>
         <div class="textsize-group" role="group" aria-label="Text size">
           <button class="textsize-btn" data-size="base" aria-label="Text size A">A</button>
@@ -562,6 +567,7 @@
 
   <script src="../data.js"></script>
   <script src="../stotras-runtime.js"></script>
+  <script src="../search.js"></script>
   <script src="../app.js" data-base="../"></script>
   
 </body>

@@ -1529,7 +1529,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 500; line-height: 1.
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.site-search { position: relative; display: flex; }
+.site-search { position: relative; display: flex; min-width: 0; }
 .site-search #searchInput {
   width: 8.5rem; padding: 0.4rem 0.7rem; font-size: 0.875rem;
   color: var(--ink); background: var(--card);
@@ -1541,6 +1541,19 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 500; line-height: 1.
   width: 15rem; outline: none; box-shadow: 0 0 0 2px var(--brass-40);
 }
 @media (min-width: 640px) { .site-search #searchInput { width: 11rem; } .site-search #searchInput:focus { width: 19rem; } }
+/* Phones: the header already carries the brand, the text-size control and the
+   menu button, so a full-width field would overflow the row. Collapse to a
+   compact field and expand on focus. Only one #searchInput may exist, so it
+   stays in the header rather than being duplicated into the nav drawer. */
+@media (max-width: 639px) {
+  .site-search #searchInput { width: 3rem; padding-inline: 0.55rem; }
+  .site-search #searchInput::placeholder { color: transparent; }
+  .site-search #searchInput:focus {
+    width: min(72vw, 17rem); padding-inline: 0.7rem;
+  }
+  .site-search #searchInput:focus::placeholder { color: var(--ink-70); }
+  .search-results { right: -0.25rem; }
+}
 .site-search #searchInput::-webkit-search-cancel-button { cursor: pointer; }
 
 .search-results {

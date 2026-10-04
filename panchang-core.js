@@ -63,11 +63,16 @@ function tzOffsetMs(tz, date) {
 }
 
 function fmtHM(utcMs, offsetMin) {
-  const d = new Date(utcMs + offsetMin * 60000);
+  // Polar latitudes (e.g. Tromso) have days with no sunrise/sunset, and the
+  // engine returns null for those. Never throw, never print "NaN".
+  if (utcMs == null || !isFinite(utcMs)) return '\u2014';
+  const d = new Date(utcMs + (offsetMin || 0) * 60000);
+  if (isNaN(d.getTime())) return '\u2014';
   let h = d.getUTCHours(), m = d.getUTCMinutes();
   const ap = h >= 12 ? 'PM' : 'AM';
   h = h % 12 || 12;
-  return h + ':' + String(m).padStart(2, '0') + ' ' + ap;
+  // Pad the hour too, so 05:30 rather than 5:30.
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ' ' + ap;
 }
 
 function fmtOffset(offMin) {
@@ -102,8 +107,11 @@ function computeFor(lib, date, place) {
 /* The sunrise (udaya) item of a named array (tithis, nakshatras, …). */
 function n0(nameField, arr, C) {
   const list = (arr || []).filter(x => within(x.startTime, C.dayStart, C.dayEnd));
-  const item = list[0] || (arr && arr[0]);
-  return item ? { name: item[nameField], start: item.startTime, end: item.endTime } : null;
+  // If nothing intersects the local day (possible at extreme latitudes),
+  // showing an out-of-window entry would be wrong data, so report nothing.
+  const item = list[0];
+  if (!item) return null;
+  return { name: item[nameField], start: item.startTime, end: item.endTime };
 }
 
 function haversineKm(lat1, lng1, lat2, lng2) {

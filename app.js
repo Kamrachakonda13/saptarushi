@@ -85,7 +85,7 @@
     stopAudioOnly();
     audio = new Audio(track.localPath);
     renderPlayer(track);
-    audio.play().catch(() => { toast('Could not play «' + track.en + '» here.'); stopPlayer(); });
+    audio.play().catch(() => { toast('Could not play «' + esc(track.en) + '» here.'); stopPlayer(); });
     audio.addEventListener('ended', () => { stopPlayer(); toast(track.te + ' finished.'); });
   }
 
@@ -140,11 +140,14 @@
         if (track.url && !track.localPath) { playLocal({ te: track.te, en: track.en, tag: track.tag, localPath: track.url }); return; }
         if (track.localPath) playLocal(track);
         else {
-          const url = track.src || yt(track.te + ' ' + track.en);
-          const label = track.src ? 'Listen on Stotra Nidhi \u2197' : 'Open the internet \u2197';
-          toast('Not stored here — listen online: <a href="' + url + '" target="_blank" rel="noopener">' + label + '</a>', 5600);
+          // Only http(s) URLs are ever emitted; a track.src of
+          // "javascript:..." would otherwise execute for every visitor.
+          const raw = track.src ? String(track.src) : '';
+          const safe = /^https?:\/\//i.test(raw) ? raw : yt(track.te + ' ' + track.en);
+          const label = raw ? 'Listen on Stotra Nidhi \u2197' : 'Open the internet \u2197';
+          toast('Not stored here — listen online: <a href="' + esc(safe) + '" target="_blank" rel="noopener">' + label + '</a>', 5600);
           openChat();
-          bot('I don\u2019t have <b>' + esc(track.te) + '</b> saved as audio in the local library, so I can\u2019t play it in-page right now. The chant is published by <b>Stotra Nidhi</b> online — listen there: <a class="msg-link" href="' + url + '" target="_blank" rel="noopener">' + label + '</a>');
+          bot('I don\u2019t have <b>' + esc(track.te) + '</b> saved as audio in the local library, so I can\u2019t play it in-page right now. The chant is published by <b>Stotra Nidhi</b> online — listen there: <a class="msg-link" href="' + esc(safe) + '" target="_blank" rel="noopener">' + label + '</a>');
         }
       });
     });
@@ -260,8 +263,19 @@
     });
   }
 
+  // Space-insensitive form, so natural spellings match stored labels:
+  // "Sai Baba" -> "saibaba" matches the deity labelled "Saibaba".
+  const compact = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
+  function deityMatches(d, q) {
+    if (q.includes(norm(d.label)) || q.includes(norm(d.te))) return true;
+    const cq = compact(q);
+    // Require a decent length so short queries don't match by accident.
+    return cq.length >= 4 && (compact(d.label).includes(cq) || cq.includes(compact(d.label)));
+  }
+
   function findDeity(q) {
-    return D.deities.find(d => q.includes(norm(d.label)) || q.includes(norm(d.te)));
+    return D.deities.find(d => deityMatches(d, q));
   }
   function findTrack(q) {
     return D.audio.find(a => q.includes(norm(a.te)) || q.includes(norm(a.en))) ||
@@ -270,7 +284,7 @@
   function findBook(q) {
     const byName = D.books.find(b => q.includes(norm(b.en)) || q.includes(norm(b.te)));
     if (byName) return byName;
-    const deity = D.deities.find(d => q.includes(norm(d.label)) || q.includes(norm(d.te)));
+    const deity = D.deities.find(d => deityMatches(d, q));
     if (deity) return booksOfDeity(deity.slug)[0];
     return null;
   }
@@ -297,17 +311,20 @@
       return bot('I couldn\u2019t find that recording. Try one of these on the internet: <a class="msg-link" href="' + yt(text) + '" target="_blank" rel="noopener">Search YouTube \u2197</a>');
     }
 
-    const book = findTrack(q) ? null : findBook(q);
+    // findBook() also resolves a bare deity name to that deity's first book,
+    // so a match does NOT mean the user asked for a book. Decide by whether
+    // the book branch was actually taken, not by whether `book` exists.
+    const book = findBook(q);
     if (/book|read|chapter|books/.test(q) && book) {
       if (book.comingSoon)
         return bot('<b>' + esc(book.en) + '</b> is coming soon. Read more on the internet: <a class="msg-link" href="' + web(book.te) + '" target="_blank" rel="noopener">Search \u2197</a>');
-      return bot('Opening <b>' + esc(book.en) + '</b> («' + esc(book.te) + '») — <a class="msg-link" href="books/' + book.slug + '.html">Read it here \u2197</a>');
+      return bot('Opening <b>' + esc(book.en) + '</b> («' + esc(book.te) + '») — <a class="msg-link" href="' + base + 'books/' + encodeURIComponent(book.slug) + '.html">Read it here \u2197</a>');
     }
 
     const deity = findDeity(q);
-    if (deity && !book) {
+    if (deity) {
       const aud = audioOfDeity(deity.slug);
-      bot('Opening <b>' + esc(deity.label) + '</b> — ' + esc(deity.te) + '.<br><a class="msg-link" href="deity/' + deity.slug + '.html">Go to the page \u2197</a>');
+      bot('Opening <b>' + esc(deity.label) + '</b> — ' + esc(deity.te) + '.<br><a class="msg-link" href="' + base + 'deity/' + encodeURIComponent(deity.slug) + '.html">Go to the page \u2197</a>');
       if (aud.length) {
         const quick = aud.filter(a => !a.comingSoon).slice(0, 3);
         if (quick.length) bot('Play here: ' + quick.map(a => '<button class="sugg-chip play-quick" data-q="' + esc(a.te) + '">▶ ' + esc(a.te) + '</button>').join(' '));
@@ -481,7 +498,6 @@
     const readingColumn = document.querySelector('.reading-column');
     if (!teluguBlock || !readingColumn) return;
 
-    document.querySelectorAll('.temple-deity-credit').forEach((credit) => credit.remove());
     const englishExtras = [];
     Array.from(readingColumn.children).forEach((element) => {
       if (!element.matches('h2.reading-h')) return;
@@ -494,7 +510,8 @@
 
     const buttons = Array.from(document.querySelectorAll('.lang-switch .lang-btn'));
     let activeLanguage = localStorage.getItem('saptarushi-lang') === 'te' ? 'te' : 'en';
-    let teluguExtras = null;
+    // No extra Telugu block is created any more; build.js renders it server-side.
+    const teluguExtras = null;
     function applyLanguage(language) {
       activeLanguage = language === 'te' ? 'te' : 'en';
       englishExtras.forEach((item) => {
@@ -506,41 +523,46 @@
     buttons.forEach((button) => button.addEventListener('click', () => applyLanguage(button.dataset.lang)));
     applyLanguage(activeLanguage);
 
-    const slugMatch = location.pathname.match(/([^/]+)\.html$/);
-    const slug = slugMatch ? slugMatch[1] : '';
-    if (!slug) return;
-    fetch(base + 'temples-content.json').then((response) => response.ok ? response.json() : null).then((content) => {
-      const record = content && content[slug] && content[slug].te;
-      if (!record) return;
-      teluguExtras = document.createElement('div');
-      teluguExtras.className = 'temple-extra-telugu';
-      teluguExtras.innerHTML = '<h2 class="reading-h" lang="te">కథ</h2><p class="reading-p" lang="te">' + esc(record.sthalapuram) + '</p>' +
-        '<h2 class="reading-h" lang="te">ప్రాముఖ్యత</h2><p class="reading-p" lang="te">' + esc(record.reverence) + '</p>';
-      teluguBlock.appendChild(teluguExtras);
-      applyLanguage(activeLanguage);
-    }).catch(() => {});
+    // build.js already renders sthalapuram/explanation/reverence into the
+    // Telugu .temple-lang block under the real headings (స్థల పురాణం /
+    // వివరణ / పూజింపబడటానికి కారణం). Appending them again here made Telugu
+    // readers see every paragraph twice, under mismatched headings, and cost an
+    // extra temples-content.json fetch on all 45 temple pages. Nothing to add.
   }
 
   function renderAdminHomeAudio(store) {
     const grid = document.querySelector('#homeAudioGrid');
     if (!grid || !store || !Array.isArray(store.audio)) return;
     const known = new Set(Array.from(grid.querySelectorAll('[data-slug]')).map((card) => card.dataset.slug));
-    const imageByDeity = {
-      venkateswara: 'venkateswara.jpg', shiva: 'shiva.jpg', rama: 'rama.jpg', krishna: 'krishna.png',
-      ganesha: 'ganesha.jpg', hanuman: 'hanuman.jpg', 'durga / devi': 'durga.jpg', lakshmi: 'lakshmi.jpg',
-      saibaba: 'saibaba.jpg', ayyappa: 'ayyappa.jpg', subrahmanya: 'subrahmanya.jpg', navagraha: 'navagraha.jpg'
-    };
+    // track.deity holds a SLUG, so resolve by slug rather than by label. Each
+    // candidate extension is tried in turn; anything with no artwork of its own
+    // falls back to the neutral placeholder instead of borrowing another
+    // deity's image, which would misattribute the deity.
+    const IMG_EXTS = ['.jpg', '.png', '.svg', '.webp'];
+    const deityImg = (slug) => (base + 'assets/deities/' + slug).replace(/[?#].*$/, '');
+    const NEUTRAL = base + 'assets/temples/placeholder.svg';
+    function attachDeityImage(img, slug) {
+      let i = 0;
+      img.onerror = function () {
+        i++;
+        if (i < IMG_EXTS.length) { img.src = deityImg(slug) + IMG_EXTS[i]; return; }
+        img.onerror = null;
+        img.src = NEUTRAL;
+      };
+      img.src = deityImg(slug) + IMG_EXTS[0];
+    }
     store.audio.filter((track) => track && track.slug && !known.has(track.slug)).forEach((track) => {
       const deity = String(track.deity || '').toLowerCase();
-      const image = base + 'assets/deities/' + (imageByDeity[deity] || 'venkateswara.jpg');
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'track-card';
       card.dataset.slug = track.slug;
-      card.innerHTML = '<div class="track-art"><img src="' + esc(image) + '" alt="" loading="lazy"/><span class="track-play-btn" aria-hidden="true">▶</span></div>' +
+      card.innerHTML = '<div class="track-art"><img alt="" loading="lazy" data-deity-img="' + esc(deity) + '"/><span class="track-play-btn" aria-hidden="true">▶</span></div>' +
         '<div class="track-row"><p class="track-te truncate" lang="te">' + esc(track.te || track.name || track.slug) + '</p></div>' +
         '<p class="track-meta truncate">' + esc(track.en || track.name || 'From the library') + '</p>';
       grid.appendChild(card);
+      const img = card.querySelector('[data-deity-img]');
+      if (img && deity) attachDeityImage(img, deity);
     });
     attachTrackCards();
   }
@@ -548,18 +570,39 @@
   initTempleLanguageExtras();
   initSiteEditor();
 
-  /* ---------- Book chapter switcher ---------- */
+  /* ---------- Book chapter switcher ----------
+     The generator emits .chapter-btn as anchors to #ch-N over .chapter-block
+     sections, so navigation is native. The previous handler queried
+     '.chapter-body' (which exists in no page) and 'data-i' (never emitted),
+     compared NaN === NaN, and would have hidden every chapter had the class
+     ever matched. This only keeps the .active highlight in sync with scroll. */
   const chapterNav = $('.chapter-nav');
   if (chapterNav) {
-    const bodies = Array.from(document.querySelectorAll('.chapter-body'));
-    $$('.chapter-btn', chapterNav).forEach(btn => {
-      btn.addEventListener('click', () => {
-        $$('.chapter-btn', chapterNav).forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const i = +btn.dataset.i;
-        bodies.forEach(bd => { bd.style.display = (+bd.dataset.i === i) ? '' : 'none'; });
-      });
-    });
+    const btns = $$('.chapter-btn', chapterNav);
+    const sections = btns
+      .map(b => {
+        const id = (b.getAttribute('href') || '').replace('#', '');
+        return id ? document.getElementById(id) : null;
+      })
+      .filter(Boolean);
+    if (btns.length && sections.length && 'IntersectionObserver' in window) {
+      const setActive = (btn) => {
+        btns.forEach(b => b.classList.toggle('active', b === btn));
+      };
+      const visible = new Map();
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => visible.set(e.target, e.isIntersecting ? e.intersectionRatio : 0));
+        let best = null, bestRatio = 0;
+        visible.forEach((ratio, el) => { if (ratio > bestRatio) { bestRatio = ratio; best = el; } });
+        if (best) {
+          const idx = sections.indexOf(best);
+          if (idx >= 0) setActive(btns[idx]);
+        }
+      }, { rootMargin: '-15% 0px -70% 0px', threshold: [0, 0.15, 0.5, 1] });
+      sections.forEach(el => io.observe(el));
+      btns.forEach(b => b.addEventListener('click', () => setActive(b)));
+      if (sections[0]) setActive(btns[0]);
+    }
   }
 
   /* ---------- Chat close ---------- */

@@ -1,3 +1,12 @@
+// NOTE: this file is NOT reachable from any build path.
+//
+// It is a standalone scripture text (purvapithika / dhyanam / verses /
+// phalashruti) and does NOT follow the content/*-content.js shape that
+// build.js and build-search-index.js require (deity / label / te /
+// stotras / poojas / mantras / homa). Nothing requires it, so the text is
+// currently absent from the published site. It is kept because the source
+// text is worth keeping. To publish it, map each section onto a book
+// chapter in build.js. Referenced only by the dev scripts audit-full.js.
 // content/vishnu-sahasranamam.js
 // Śrī Viṣṇu Sahasranāma Stotram — placeholder. Full 1000 names in 107 verses to be added.
 

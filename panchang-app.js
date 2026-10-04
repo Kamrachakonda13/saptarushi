@@ -28,6 +28,25 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* ------------------- computation ------------------- */
+
+/* Nearest IANA zone for arbitrary coordinates. Hardcoding Asia/Kolkata meant a
+   visitor in London or New York was shown Bengaluru's sunrise, Rahu Kaalam and
+   muhurtas. Snap to the closest zone in PLACES by great-circle distance, which
+   is accurate enough for a panchangam and needs no network lookup. */
+function tzNear(lat, lng) {
+  let best = null, bestKm = Infinity;
+  for (const p of PLACES) {
+    if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number' || !p.tz) continue;
+    const dLat = (p.lat - lat) * Math.PI / 180;
+    const dLng = (p.lng - lng) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(lat * Math.PI / 180) * Math.cos(p.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    const km = 6371 * 2 * Math.asin(Math.min(1, Math.sqrt(a)));
+    if (km < bestKm) { bestKm = km; best = p.tz; }
+  }
+  return best || 'Asia/Kolkata';
+}
+
 function resolvePlace() {
   const raw = ($('panchPlace').value || '').trim();
   if (raw) {
@@ -40,7 +59,7 @@ function resolvePlace() {
   const lat = parseFloat($('panchLat').value);
   const lng = parseFloat($('panchLng').value);
   if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-    return { place: { n: 'Custom location', co: '', lat, lng, e: 50, tz: 'Asia/Kolkata' }, geo: true };
+    return { place: { n: 'Custom location', co: '', lat, lng, e: 50, tz: tzNear(lat, lng) }, geo: true };
   }
   return { place: PLACES.find(p => p.co === 'India' && p.n === 'Bengaluru'), geo: false };
 }
@@ -145,7 +164,7 @@ function renderSummary(C) {
     '<span class="panch-big-date">' + esc(C.date.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })) + '</span>';
   $('panchNak').textContent = nak ? nak.name + ' — ' + p.nakshatraPada + 'వ పాదం' : '—';
   $('panchMasa').textContent = (p.masa.isAdhika ? 'అధిక ' : '') + masaTelu + ' మాసం';
-  $('panchSun').textContent = 'సూర్యోదయం ' + fmtHM(p.sunrise.getTime(), C.offMin) + ' · సూర్యాస్తమయం ' + fmtHM(p.sunset.getTime(), C.offMin);
+  $('panchSun').textContent = 'సూర్యోదయం ' + fmtOne(p.sunrise, C.offMin) + ' · సూర్యాస్తమయం ' + fmtOne(p.sunset, C.offMin);
 }
 
 function renderAngas(C) {
@@ -215,9 +234,20 @@ function renderFestivals(C) {
     : '<li class="fest-none">No major festival falls on this day.</li>';
 }
 
-function fmtWin(w, offMin) { return fmtHM(w.startTime, offMin) + ' – ' + fmtHM(w.endTime, offMin); }
-function fmtRange(a, b, offMin) { return fmtHM(a.getTime(), offMin) + ' – ' + fmtHM(b.getTime(), offMin); }
-function fmtOne(ms, offMin) { return fmtHM(ms.getTime(), offMin); }
+function fmtWin(w, offMin) {
+  if (!w) return '—';
+  return fmtHM(w.startTime, offMin) + ' – ' + fmtHM(w.endTime, offMin);
+}
+// Rahu Kaalam and friends are null when the engine cannot compute them, so
+// every formatter tolerates null instead of throwing mid-render.
+function fmtRange(a, b, offMin) {
+  if (!a || !b) return '—';
+  return fmtHM(a.getTime(), offMin) + ' – ' + fmtHM(b.getTime(), offMin);
+}
+function fmtOne(ms, offMin) {
+  if (!ms) return '—';
+  return fmtHM(ms.getTime(), offMin);
+}
 
 function renderTimings(C) {
   const p = C.panchang;
@@ -257,6 +287,15 @@ function eclipseVisible(event, C) {
   const phases = event.phases.map(phase => ({ label: phase[0], time: new Date(phase[1]).getTime() }));
   if (!phases.some(phase => localDateKey(phase.time, C.offMin) === dateKey)) return false;
   if (event.visibility === 'night') {
+    // No sunrise/sunset at polar latitudes; fall back to the lat/lng bounds
+    // rather than dereferencing null.
+    if (!C.panchang.sunset || !C.panchang.sunrise) {
+      const b = event.visibility;
+      if (b && typeof b === 'object') {
+        return C.place.lat >= b.minLat && C.place.lat <= b.maxLat && C.place.lng >= b.minLng && C.place.lng <= b.maxLng;
+      }
+      return false;
+    }
     const sunset = localMinutes(C.panchang.sunset.getTime(), C.offMin);
     const sunrise = localMinutes(C.panchang.sunrise.getTime(), C.offMin);
     return phases.some(phase => localDateKey(phase.time, C.offMin) === dateKey && (localMinutes(phase.time, C.offMin) >= sunset || localMinutes(phase.time, C.offMin) < sunrise));

@@ -1,3 +1,10 @@
+// NOTE: this file is NOT reachable from any build path.
+//
+// Standalone scripture text (purvapithika / dhyanam / verses / phalashruti),
+// not the content/*-content.js shape build.js requires. The text is currently
+// absent from the published site. Kept because the source text is worth
+// keeping. Referenced only by the dev script audit-full.js.
+// Related: content/lalitha-content.js, which IS published.
 // content/lalitha-sahasranamam.js
 // Śrī Lalitā Sahasranāma Stotram — complete 1000 names in 182 ślokas.
 // From Brahmanda Purana, Hayagriva-Agastya Samvada.

@@ -55,10 +55,13 @@
   //   - consonant (+ vowel) → base glyph + matra
   //   - consonant cluster  → base + virama
   function toIndic(iast, CONS_MAP, VA_MAP, IND_MAP, CONJ_MAP) {
+    // Lower-case first: CONS_MAP/VA_MAP/IND_MAP are keyed in lower case, so
+    // capitalised input used to bypass every rule and leak Latin characters
+    // into the output.
     let s = String(iast || '')
       .normalize('NFC')
+      .toLowerCase()
       .replace(/w/g, 'v')
-      .replace(/kṣ/g, 'kṣ')
       // word-level maps first (before the generic sh→ś step)
       .replace(/shivaya/g, 'śivāya')
       .replace(/shivaaya/g, 'śivāya')
@@ -66,10 +69,12 @@
       .replace(/shri/g, 'śrī').replace(/shree/g, 'śrī').replace(/sri/g, 'śrī')
       .replace(/lakshmi/g, 'lakṣmī').replace(/laxmi/g, 'lakṣmī').replace(/mahalaxmi/g, 'mahālakṣmī')
       .replace(/krishna/g, 'kṛṣṇa').replace(/krishn/g, 'kṛṣṇ')
-      .replace(/mandalate/i, 'maṇḍalate')
-      .replace(/Sh/g, 'ṣ').replace(/sh/g, 'ś')
+      .replace(/mandalate/g, 'maṇḍalate')
+      .replace(/sh/g, 'ś')
       .replace(/aa/g, 'ā').replace(/ii/g, 'ī').replace(/uu/g, 'ū')
-      .replace(/chch/g, 'cch').replace(/ṅg/g, 'ṅ')
+      .replace(/chch/g, 'cch')
+      // ṅg is a single syllable (saṅga); collapsing it to ṅ dropped the g.
+      .replace(/ṅg/g, 'ṅg')
       .replace(/ee/g, 'ī').replace(/oo/g, 'ū')
       .replace(/\.m/g, 'ṃ').replace(/\.n/g, 'ṃ')
       .replace(/ah\b/g, 'aḥ')
@@ -97,8 +102,11 @@
       // independent vowel (word boundary, after space/hyphen, or after a vowel)
       const prev = i === 0 ? '' : s[i - 1];
       const prevIsCons = prev !== '' && CONS_MAP[prev] !== undefined;
+      // A vowel is "independent" unless a consonant immediately precedes it.
+      // Testing a bare /^[a-z]$/ missed vowels after vowel letters.
+      const prevIsMappedLetter = prev !== '' && prevIsCons;
       const IND = IND_MAP[two] !== undefined ? two : (IND_MAP[s[i]] !== undefined ? s[i] : null);
-      if (IND && !prevIsCons && !/^[a-z]$/i.test(prev)) {
+      if (IND && !prevIsMappedLetter) {
         // a standalone a/ā/i/etc.
         const len = two in IND_MAP ? 2 : 1;
         out.push(IND_MAP[IND]);

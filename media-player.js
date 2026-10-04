@@ -202,22 +202,27 @@
     };
   }
 
-  /* play a row / wrap any <li data-url> item */
+  /* play a row / wrap any <li data-url> item.
+     Accepts EITHER a real row element (preferred, so the row can show state)
+     or any object carrying { dataset: { url } } — admin.html passes the latter
+     for its flat media list. Both paths used to reach querySelector() here and
+     throw "rowEl.querySelector is not a function". */
   function play(rowEl, opts) {
     opts = opts || {};
+    const url = rowEl && rowEl.dataset ? rowEl.dataset.url : '';
+    if (!url) return;
+    const el = (rowEl && typeof rowEl.querySelector === 'function') ? rowEl : null;
     if (current) {
       if (current.row === rowEl && !current.audio.paused) { current.audio.pause(); setRowState(current.row, false); return; }
       current.audio.pause();
       setRowState(current.row, false);
     }
-    const url = rowEl.dataset.url;
-    if (!url) return;
     const audio = new Audio(url);
     current = { row: rowEl, audio, repeat: !!opts.repeat };
     setRowState(rowEl, true);
     audio.play().catch(() => {});
     audio.addEventListener('timeupdate', () => {
-      const durEl = rowEl.querySelector('.mp-dur');
+      const durEl = el && el.querySelector('.mp-dur');
       if (durEl && isFinite(audio.duration) && (!audio.dataset.done)) {
         durEl.textContent = fmtDuration(audio.duration);
         audio.dataset.done = '1';
@@ -237,6 +242,8 @@
 
   function setRowState(rowEl, playing) {
     if (!rowEl) return;
+    // Tolerate a plain { dataset } descriptor, which has no DOM API.
+    if (typeof rowEl.querySelector !== 'function') return;
     const b = rowEl.querySelector('.mp-play');
     if (b) b.textContent = playing ? '⏸' : '▶';
     rowEl.classList.toggle('playing', playing);

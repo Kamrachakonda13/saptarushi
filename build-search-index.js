@@ -41,7 +41,9 @@ if (fs.existsSync(CONTENT_DIR)) {
               ? (item.note || '')
               : (item.verses || []).slice(0, 3).join(' ');
         add({
-          type: cat.slice(0, -1),
+          // Explicit map: cat.slice(0, -1) turned 'homa' into 'hom'.
+          // Singular index types: stotra, pooja, mantra, homa.
+          type: { stotras: 'stotra', poojas: 'pooja', mantras: 'mantra', homa: 'homa' }[cat] || cat,
           deity: slug,
           deityLabel,
           title: item.en || item.te || item.slug,

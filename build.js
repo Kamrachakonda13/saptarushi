@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
 require('./lib/env').loadEnv();
 
@@ -11,6 +12,16 @@ const ROOT = __dirname;
 const D = require('./data.js');
 
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// JSON destined for an inline <script> block. JSON.stringify does NOT escape
+// "<", so a value containing "</script>" would close the block early and let
+// content data execute as script. Escaping "<" as "\u003c" is valid JSON and
+// decodes back to "<" at runtime, so the browser sees identical data.
+const jsonForScript = (v) => JSON.stringify(v)
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/\u2028/g, '\\u2028')
+  .replace(/\u2029/g, '\\u2029');
 function rel(rootDepth, file) {
   return rootDepth === 0 ? file : '../'.repeat(rootDepth) + file;
 }
@@ -190,9 +201,9 @@ function deityRail(rootDepth, currentSlug) {
   D.deities.forEach(d => {
     const active = d.slug === currentSlug ? ' active' : '';
     const img = deityImgAsset(d.slug, rootDepth);
-    out.push(`<a class="deity-pill${active}" title="${d.label}" href="${rel(rootDepth, 'deity/' + d.slug + '.html')}">
+    out.push(`<a class="deity-pill${active}" title="${esc(d.label)}" href="${rel(rootDepth, 'deity/' + encodeURIComponent(d.slug) + '.html')}">
       ${img ? `<img class="pill-icon" src="${img}" alt="${d.label}" loading="lazy"/>` : `<span class="pill-symbol" aria-hidden="true">${esc(d.symbol)}</span>`}
-      <span class="pill-label">${d.label}</span>
+      <span class="pill-label">${esc(d.label)}</span>
     </a>`);
   });
   out.push('</div>');
@@ -202,14 +213,14 @@ function deityRail(rootDepth, currentSlug) {
 function trackCard(rootDepth, t) {
   const disabled = t.comingSoon ? ' disabled' : '';
   const img = deityImgAsset(t.deity, rootDepth);
-  return `<button type="button" class="track-card${disabled}" data-slug="${t.slug}"${disabled ? ' disabled' : ''}>
+  return `<button type="button" class="track-card${disabled}" data-slug="${esc(t.slug)}"${disabled ? ' disabled' : ''}>
     <div class="track-art">
       ${img ? `<img src="${img}" alt="" loading="lazy"/>` : ''}
       <span class="track-play-btn" aria-hidden="true">▶</span>
     </div>
     <div class="track-row">
-      <p class="track-te truncate" lang="te">${t.te}</p>
-      <span class="track-dur">${t.duration}</span>
+      <p class="track-te truncate" lang="te">${esc(t.te)}</p>
+      <span class="track-dur">${esc(t.duration)}</span>
     </div>
     <p class="track-meta truncate">${esc(t.en)} · ${esc(t.tag)}</p>
   </button>`;
@@ -220,7 +231,7 @@ function bookCard(rootDepth, b) {
   return `<a class="book-card" href="${rel(rootDepth, 'books/' + b.slug + '.html')}">
     ${img ? `<img class="book-cover-img" src="${img}" alt="${esc(b.en)}" loading="lazy"/>` : ''}
     <div class="min-w-0 flex-1">
-      <p class="book-te" lang="te">${b.te}</p>
+      <p class="book-te" lang="te">${esc(b.te)}</p>
       <p class="book-en">${esc(b.en)}</p>
       <p class="book-meta">${esc(b.meta)}</p>
     </div>
@@ -391,14 +402,14 @@ function templesPage() {
   const counts = {};
   T.forEach(t => { counts[t.category] = (counts[t.category] || 0) + 1; });
   const states = [...new Set(T.map(t => t.state))].sort();
-  const json = JSON.stringify(T.map(templeJs));
+  const json = jsonForScript(T.map(templeJs));
 
   const leafCSS = `<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>`;
   const leafJS = `  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>`;
   const templeJS = `  <script>
   (function () {
     const TEMPLES = ${json};
-    const CATINFO = ${JSON.stringify(TEMPLE_CATS)};
+    const CATINFO = ${jsonForScript(TEMPLE_CATS)};
     const CAT_ORDER = ['shakti', 'jyotirlinga', 'pancharama', 'chardham', 'panchabhoota'];
     const CATS = Object.keys(TEMPLES);
     let currentCategory = 'all';
@@ -662,12 +673,26 @@ function templePage(slug) {
    same panchang-places.js the client imports, so the drop-down and the
    computation can never disagree. */
 const _PANC_SRC = fs.readFileSync(path.join(ROOT, 'panchang-places.js'), 'utf8')
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/\/\/[^\n]*/g, '')
-  .replace(/export const /g, '');
-const _panc = { PLACES: null };
-eval(_PANC_SRC + '\n; _panc.PLACES = PLACES;');
-const PANC_PLACES = _panc.PLACES;
+  // Strip only the ESM export keywords. The previous regex-based *comment*
+  // removal was the real hazard: it did not respect string literals, so a
+  // single "//" inside a value (e.g. a URL) truncated the source and aborted
+  // the whole build with an unhandled SyntaxError.
+  .replace(/^export\s+/gm, '');
+const PANC_PLACES = (function loadPlaces() {
+  // Run in a vm context with no Node globals at all: no require, no process,
+  // no fetch, no filesystem. Only the built-ins the data literal needs.
+  const context = vm.createContext(Object.create(null), {
+    codeGeneration: { strings: false, wasm: false },
+  });
+  const value = vm.runInContext(_PANC_SRC + '\n;PLACES;', context, {
+    filename: 'panchang-places.js',
+    timeout: 5000,
+  });
+  if (!Array.isArray(value) || !value.length) {
+    throw new Error('panchang-places.js did not yield a non-empty PLACES array');
+  }
+  return value;
+})();
 
 function placesSelect() {
   const groups = {};
@@ -899,7 +924,7 @@ function audioPage() {
     </div>
     <div class="filter-row">
       <button class="filter-chip active" data-filter="all">All</button>
-      ${D.deities.map(d => `<button class="filter-chip" data-filter="${d.slug}">${d.label}</button>`).join('\n')}
+      ${D.deities.map(d => `<button class="filter-chip" data-filter="${esc(d.slug)}">${esc(d.label)}</button>`).join('\n')}
     </div>
     <div class="grid-cards" id="audioGrid">${D.audio.map(t => trackCard(0, t)).join('\n')}</div>
   </section>
@@ -978,9 +1003,9 @@ function deityPage(slug) {
     <div class="hero-flex" style="gap:1.5rem;margin-bottom:2rem">
       <div class="min-w-0 flex-1">
         <p class="hero-eyebrow">Deity</p>
-        <h1 class="hero-title" style="max-width:none">${d.label}</h1>
-        <p class="font-telugu text-xl" style="color:var(--ink-80);margin-top:0.25rem" lang="te">${d.te}</p>
-        <p class="hero-desc">${d.desc}</p>
+        <h1 class="hero-title" style="max-width:none">${esc(d.label)}</h1>
+        <p class="font-telugu text-xl" style="color:var(--ink-80);margin-top:0.25rem" lang="te">${esc(d.te)}</p>
+        <p class="hero-desc">${esc(d.desc)}</p>
         <div class="flex" style="gap:2rem;margin-top:1.25rem;font-size:1rem">
           <span><strong class="font-display" style="font-size:1.25rem">${totalBooks}</strong><span style="margin-left:0.375rem;color:var(--ink-70)">books</span></span>
         </div>
@@ -997,7 +1022,7 @@ function deityPage(slug) {
           return '<p class="' + badgeClass + '">' + icon + ' ' + text + '</p>';
         })()}
       </div>
-      ${img ? `<img class="hero-img deity-hero-img" src="${img}" alt="${d.label}"/>` : ''}
+      ${img ? `<img class="hero-img deity-hero-img" src="${img}" alt="${esc(d.label)}"/>` : ''}
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="books" aria-pressed="true">Books</button>
@@ -1036,7 +1061,7 @@ function bookPage(slug) {
       <aside class="book-aside">
         ${cover ? `<figure class="book-cover-fig"><img class="book-cover-img" style="width:100%;height:auto;aspect-ratio:1/1" src="${cover}" alt="${esc(b.en)}" loading="lazy"/></figure>` : ''}
         <h1 class="book-h1">${esc(b.en)}</h1>
-        <p class="book-te-title" lang="te">${b.te}</p>
+        <p class="book-te-title" lang="te">${esc(b.te)}</p>
         <p class="book-meta-line">${esc(b.meta)}</p>
         ${b.chapters.length ? `<nav class="chapter-nav">
           ${b.chapters.map((c, i) => `<a class="chapter-btn" href="#ch-${i}">${esc(c.title)}</a>`).join('\n')}

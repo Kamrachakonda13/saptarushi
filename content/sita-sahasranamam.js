@@ -1,3 +1,9 @@
+// NOTE: this file is NOT reachable from any build path.
+//
+// Standalone scripture text (verses), not the content/*-content.js shape
+// build.js requires, so it is absent from the published site. Kept because
+// the source text is worth keeping. Referenced only by the dev scripts
+// audit-full.js and fix-sita.js.
 // content/sita-sahasranamam.js
 // Śrī Sītā Sahasranāma Stotram — placeholder. Full 1000 names in 150 slokas to be added.
 

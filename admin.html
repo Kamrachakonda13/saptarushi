@@ -257,7 +257,7 @@
       });
   }
 
-  function logout() { token = ''; localStorage.removeItem('saptarushi-admin-token'); location.reload(); }
+  function logout() { token = ''; localStorage.removeItem('saptarushi-admin-token'); localStorage.removeItem('saptarushi-admin-user'); location.reload(); }
 
   function showConsole(on) {
     $('#loginView').style.display = on ? 'none' : '';
@@ -539,9 +539,32 @@
     sel.innerHTML = '<option value="library">General library</option>' + known.map(function (d) { return '<option>' + d + '</option>'; }).join('');
   }
 
-  /* ---------------- init ---------------- */
-  if (token) { showConsole(true); loadStore(); seedDeities(); loadAudioCatalog(); }
-  else showConsole(false);
+  /* ---------------- init ----------------
+     A token is only believed once the server confirms it. Sessions live in
+     memory, so a server restart invalidates every token while the browser
+     still holds one; showing the console on a stale token just produced a
+     screen full of failed requests. */
+  function enterConsole() {
+    showConsole(true);
+    loadStore(); seedDeities(); loadAudioCatalog();
+  }
+  function signedOut() {
+    token = '';
+    localStorage.removeItem('saptarushi-admin-token');
+    localStorage.removeItem('saptarushi-admin-user');
+    showConsole(false);
+  }
+  if (token) {
+    fetch('api/session', { headers: { 'X-Admin-Token': token } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('unauthorised');
+        return r.json();
+      })
+      .then(function () { enterConsole(); })
+      .catch(function () { signedOut(); });
+  } else {
+    showConsole(false);
+  }
 
   $('#loginForm').addEventListener('submit', function (e) {
     e.preventDefault();

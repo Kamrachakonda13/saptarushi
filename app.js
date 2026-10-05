@@ -27,12 +27,46 @@
     })
     .catch(() => { /* serverless mode is fine */ });
 
-  /* ---------- asset base for relative pages ---------- */
+/* ---------- asset base for relative pages ---------- */
   const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const norm = (s) => String(s).replace(/[^\p{L}\p{N}]+/gu, ' ').toLowerCase().trim();
 
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+  /* ---------- admin session ----------
+     Admin-only UI is hidden unless the session token is actually valid, not
+     merely present. Sessions live in an in-memory Map on the server, so a
+     restart invalidates every token while the browser still holds it in
+     localStorage. Checking presence alone left the editor visible to anyone
+     whose browser had once been signed in, and every save then failed.
+     A rejected token is cleared so the UI disappears immediately. */
+  const TOKEN_KEY = 'saptarushi-admin-token';
+  const USER_KEY = 'saptarushi-admin-user';
+  let adminSession = null;   // null = not yet checked
+
+  function isAdminSession() {
+    if (adminSession !== null) return Promise.resolve(adminSession);
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (!token) { adminSession = false; return Promise.resolve(false); }
+    return fetch(base + 'api/session', { headers: { 'X-Admin-Token': token } })
+      .then(r => {
+        if (!r.ok) throw new Error('unauthorised');
+        return r.json();
+      })
+      .then(d => {
+        adminSession = !!(d && d.ok);
+        if (adminSession && d.user) localStorage.setItem(USER_KEY, d.user);
+        return adminSession;
+      })
+      .catch(() => {
+        // Stale or rejected: drop it so the admin UI disappears.
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        adminSession = false;
+        return false;
+      });
+  }
 
   const deityBySlug = (slug) => D.deities.find(d => d.slug === slug);
   const audioOfDeity = (slug) => D.audio.filter(a => a.deity === slug);
@@ -127,7 +161,9 @@
       const track = D.audio.find(a => a.slug === card.dataset.slug);
       if (!track || track.comingSoon) return;
       card.addEventListener('click', () => {
-        if (window.TextEditor && TextEditor.isAdmin()) {
+        // Validated session, not token presence: adminSession is resolved once
+        // at start-up and cleared if the server rejects the token.
+        if (adminSession === true) {
           const detail = new URL((base || '') + 'audio/' + encodeURIComponent(track.slug) + '.html', location.href);
           detail.searchParams.set('name', track.name || track.en || track.slug);
           detail.searchParams.set('en', track.en || '');
@@ -342,7 +378,9 @@
 
   /* ---------- admin page text editor ---------- */
   function initSiteEditor() {
-    if (!localStorage.getItem('saptarushi-admin-token')) return;
+    // Admin-only. Validated against the server rather than merely checking that
+    // a token exists in localStorage, so the editor never appears to a visitor
+    // whose browser holds a stale token.
     const pageKey = location.pathname.replace(/\/+$/, '') || '/';
     const editableSelector = [
       'main h1', 'main h2', 'main h3', 'main p', 'main label',
@@ -370,9 +408,9 @@
 
     const panel = document.createElement('div');
     panel.className = 'site-editor-panel';
+    // Audio upload is intentionally absent: audio is out of scope for now.
     panel.innerHTML = '<button type="button" class="site-editor-toggle">Edit page text</button>' +
       '<label class="site-editor-pdf">Upload PDF<input type="file" accept="application/pdf" class="site-editor-pdf-input"/></label>' +
-      '<label class="site-editor-audio">Upload MP3<input type="file" accept="audio/mpeg,audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.opus,.webm" multiple class="site-editor-audio-input"/></label>' +
       '<span class="site-editor-status" aria-live="polite"></span>' +
       '<textarea class="site-editor-pdf-output" aria-label="Parsed PDF text" placeholder="Parsed PDF text will appear here"></textarea>' +
       '<div class="site-editor-audio-library" aria-label="Page audio library"></div>';
@@ -381,7 +419,6 @@
     const toggle = panel.querySelector('.site-editor-toggle');
     const status = panel.querySelector('.site-editor-status');
     const pdfInput = panel.querySelector('.site-editor-pdf-input');
-    const audioInput = panel.querySelector('.site-editor-audio-input');
     const pdfOutput = panel.querySelector('.site-editor-pdf-output');
     const audioLibrary = panel.querySelector('.site-editor-audio-library');
     let editing = false;
@@ -421,28 +458,7 @@
       }).catch(function (error) { status.textContent = error.message; });
     });
 
-    audioInput.addEventListener('change', function () {
-      const files = Array.from(audioInput.files || []).filter(function (file) {
-        return /\.(mp3|wav|ogg|oga|m4a|aac|flac|opus|webm)$/i.test(file.name) || file.type.indexOf('audio/') === 0;
-      });
-      if (!files.length) { status.textContent = 'Choose an audio file'; return; }
-      const pageFolder = pageAudioFolder();
-      const formData = new FormData();
-      formData.append('folder', pageFolder);
-      formData.append('dest', 'audio');
-      files.forEach(function (file) { formData.append('files', file, file.name); });
-      status.textContent = 'Uploading ' + files.length + ' audio file' + (files.length === 1 ? '' : 's') + '…';
-      fetch(base + 'api/upload?path=' + encodeURIComponent('audio/' + pageFolder), {
-        method: 'POST',
-        headers: { 'X-Admin-Token': localStorage.getItem('saptarushi-admin-token') },
-        body: formData
-      }).then(function (response) { return response.text().then(function (body) { let result; try { result = JSON.parse(body); } catch (_) { throw new Error(body || ('Upload failed (' + response.status + ')')); } if (!response.ok) throw new Error(result.error || ('Upload failed (' + response.status + ')')); return result; }); }).then(function (result) {
-        if (!result.ok) throw new Error(result.error || 'Could not upload audio');
-        status.textContent = 'Uploaded ' + result.count + ' audio file' + (result.count === 1 ? '' : 's');
-        renderPageAudio(result.audioIndex);
-        audioInput.value = '';
-      }).catch(function (error) { status.textContent = error.message; });
-    });
+    // Audio upload handler intentionally omitted while audio is out of scope.
 
     function finishEdit() {
       editing = false;
@@ -568,7 +584,11 @@
   }
 
   initTempleLanguageExtras();
-  initSiteEditor();
+  // The page-text editor is admin-only, so it is built only after the session
+  // token has been confirmed valid by the server.
+  isAdminSession().then(function (isAdmin) {
+    if (isAdmin) initSiteEditor();
+  });
 
   /* ---------- Book chapter switcher ----------
      The generator emits .chapter-btn as anchors to #ch-N over .chapter-block

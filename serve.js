@@ -446,6 +446,22 @@ http.createServer((req, res) => {
       return json(res, 200, { ok: true });
     }
 
+    // Session probe. Sessions live in an in-memory Map, so every server restart
+    // invalidates all tokens while browsers keep them in localStorage. Client
+    // code must be able to tell a genuinely valid session from a stale one,
+    // otherwise admin-only controls stay visible and simply fail on save.
+    if (p === 'session' && req.method === 'GET') {
+      if (!authed(req)) return json(res, 401, { ok: false, error: 'Not authorised' });
+      // sessions maps token -> { user, expiresAt }, so return the username
+      // itself rather than the whole record.
+      const record = sessions.get(String(sessionToken(req)));
+      return json(res, 200, {
+        ok: true,
+        user: (record && record.user) || AUTH.username,
+        expiresAt: record ? record.expiresAt : null,
+      });
+    }
+
     // Password change. The password itself is never returned or exposed by the API.
     if (p === 'auth/change-password' && req.method === 'POST') {
       if (!authed(req)) return json(res, 401, { ok: false, error: 'Not authorised' });

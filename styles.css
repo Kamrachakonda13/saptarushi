@@ -1555,3 +1555,29 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 500; line-height: 1.
 .search-result-title { display: block; font-size: 0.9375rem; font-weight: 600; line-height: 1.35; }
 .search-result-subtitle { display: block; font-size: 0.8125rem; color: var(--ink-70); line-height: 1.4; }
 .search-no-results { padding: 0.75rem 0.6rem; font-size: 0.875rem; color: var(--ink-70); }
+
+/* --- Image credits page ------------------------------------------------- */
+.credits-table {
+  width: 100%;
+  margin-top: 1.75rem;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.credits-table th,
+.credits-table td {
+  text-align: left;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid rgba(120, 90, 50, 0.22);
+  vertical-align: top;
+}
+.credits-table th {
+  font-weight: 600;
+  color: var(--ink-soft, #6b5230);
+  border-bottom-width: 2px;
+  white-space: nowrap;
+}
+.credits-table td:first-child {
+  white-space: nowrap;
+  font-weight: 500;
+}
+.credits-table td:nth-child(2) { color: var(--ink-soft, #6b5230); }

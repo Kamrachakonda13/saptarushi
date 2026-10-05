@@ -1,7 +1,139 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img" aria-label="Dwadasha Adityas">
-<defs><radialGradient id="g" cx="50%" cy="35%" r="75%">
-<stop offset="0%" stop-color="hsl(11,55%,82%)"/><stop offset="100%" stop-color="hsl(11,45%,38%)"/>
-</radialGradient></defs>
-<rect width="400" height="400" fill="url(#g)"/>
-<text x="200" y="235" font-family="Georgia,serif" font-size="170" fill="hsl(11,30%,22%)" text-anchor="middle">☀️</text>
+<title>Dwadasha Adityas</title>
+<defs>
+<radialGradient id="bg" cx="50%" cy="34%" r="78%">
+<stop offset="0%" stop-color="hsl(36,58%,84%)"/>
+<stop offset="58%" stop-color="hsl(36,50%,58%)"/>
+<stop offset="100%" stop-color="hsl(36,46%,32%)"/>
+</radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#ffe9b0"/><stop offset="55%" stop-color="#e8b64c"/><stop offset="100%" stop-color="#b8811f"/>
+</linearGradient>
+<linearGradient id="pale" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#fffdf6"/><stop offset="100%" stop-color="#e6dcc4"/>
+</linearGradient>
+<filter id="soft" x="-25%" y="-25%" width="150%" height="150%">
+<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".33"/>
+</filter>
+</defs>
+<rect width="400" height="400" fill="url(#bg)"/>
+<g filter="url(#soft)">
+<g transform="translate(200 200)">
+<g>
+<g transform="translate(0 -118)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(59 -102)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(102 -59)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(118 0)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(102 59)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(59 102)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(0 118)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(-59 102)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(-102 59)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(-118 0)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(-102 -59)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+<g transform="translate(-59 -102)">
+<circle r="24" fill="url(#gold)"/>
+<g stroke="#a8641a" stroke-width="3" stroke-linecap="round">
+<path d="M0 -33 L0 -43"/><path d="M0 33 L0 43"/>
+<path d="M-33 0 L-43 0"/><path d="M33 0 L43 0"/>
+<path d="M-23 -23 L-30 -30"/><path d="M23 -23 L30 -30"/>
+<path d="M-23 23 L-30 30"/><path d="M23 23 L30 30"/>
+</g>
+</g>
+</g>
+<circle r="44" fill="url(#gold)"/>
+<circle r="30" fill="#ffd873"/>
+<g stroke="#c98a20" stroke-width="3" fill="none">
+<circle r="20"/><circle r="11"/>
+</g>
+</g>
+</g>
 </svg>

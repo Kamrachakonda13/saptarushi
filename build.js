@@ -48,6 +48,7 @@ const PAGES = {
   books: ['books.html', 'Books — Telugu devotional reading | Saptarushi', 'Telugu devotional books and guides you can read comfortably right in the browser.'],
   about: ['about.html', 'About Saptarushi — a calm Telugu bhakti library', 'Why Saptarushi exists: Telugu devotional books in one gentle, easy-to-read place.'],
   panchangam: ['panchangam.html', 'Panchangam — Telugu daily almanac | Saptarushi', 'Vara, Tithi, Nakshatra, Yoga and Karana for any date and town, with muhurtas, choghadiya and festivals — computed for any date and town, never hard-coded.'],
+  credits: ['credits.html', 'Image credits | Saptarushi', 'Photographers and licences for the deity and temple photographs used on this site.'],
 };
 const DEITY_PAGES = {
   venkateswara: 'Venkateswara', shiva: 'Shiva', rama: 'Rama', krishna: 'Krishna', ganesha: 'Ganesha',
@@ -172,6 +173,7 @@ function header(rootDepth, active) {
   const temples = rel(rootDepth, 'temples.html');
   const panchang = rel(rootDepth, 'panchangam.html');
   const about = rel(rootDepth, 'about.html');
+  const credits = rel(rootDepth, 'credits.html');
   const cls = (p) => (active === p ? ' class="active"' : '');
   return `  <header class="site-header">
     <div class="header-inner">
@@ -187,6 +189,7 @@ function header(rootDepth, active) {
         <a href="${temples}"${cls('temples')}>Temples</a>
         <a href="${panchang}"${cls('panchang')}>Panchang</a>
         <a href="${about}"${cls('about')}>About</a>
+        <a href="${credits}"${cls('credits')}>Credits</a>
       </nav>
       <div class="header-right">
         <div class="site-search" role="search">
@@ -210,6 +213,7 @@ function header(rootDepth, active) {
     <a href="${temples}"${cls('temples')}>Temples</a>
     <a href="${panchang}"${cls('panchang')}>Panchang</a>
     <a href="${about}"${cls('about')}>About</a>
+    <a href="${credits}"${cls('credits')}>Credits</a>
   </nav>`;
 }
 
@@ -1422,7 +1426,52 @@ function write(p, content) {
 write('index.html', homePage());
 // write('audio.html', audioPage()); // Hidden for now - will enable in future
 write('books.html', booksPage());
+const CREDITS_JSON = path.join(ROOT, 'assets', 'deities', 'CREDITS.json');
+function creditsPage() {
+  const parts = [];
+  parts.push(head(PAGES.credits[1], PAGES.credits[2], 0));
+  parts.push(`<div class="bg-parch text-ink min-h-screen">`);
+  parts.push(header(0, 'credits'));
+  parts.push(backBar(0, 'Home'));
+  parts.push(`<main>
+  <section class="section-page py-top">
+    <div class="page-head">
+      <h1>Image credits</h1>
+      <p class="page-sub">Photographers and licences for the deity photographs on this site.</p>
+    </div>
+    <div class="about-copy" style="margin-top:1.5rem">
+      <p>Most of the deity images here are photographs of temple murtis from Wikimedia Commons, each licensed by its photographer to be reused with attribution. Every one is credited below, and the deity shown was chosen deliberately — a photo of the wrong deity would be worse than no photo.</p>
+      <p>A few deities have no freely-licensed photograph at all. Rather than use an unrelated picture, those tiles are drawn symbols of the deity's own attributes, created for this site.</p>
+    </div>
+    <table class="credits-table">
+      <thead><tr><th>Deity</th><th>Photographer</th><th>Licence</th></tr></thead>
+      <tbody>
+`);
+  let credits = {};
+  if (fs.existsSync(CREDITS_JSON)) credits = JSON.parse(fs.readFileSync(CREDITS_JSON, 'utf8'));
+  D.deities.forEach(d => {
+    const c = credits[d.slug];
+    if (!c) return;
+    const src = c.source ? ` <a href="${esc(c.source)}" rel="noopener nofollow" target="_blank">source</a>` : '';
+    const lic = c.licenseUrl
+      ? `<a href="${esc(c.licenseUrl)}" rel="license noopener nofollow" target="_blank">${esc(c.license)}</a>`
+      : esc(c.license);
+    parts.push(`        <tr><td>${esc(d.label)}</td><td>${esc(c.author)}${src}</td><td>${lic}</td></tr>`);
+  });
+  parts.push(`      </tbody>
+    </table>
+    <div class="about-note">
+      <p>CC BY and CC BY-SA images are used under those terms: credit is given above and links point to the original file on Commons. If you are the photographer of one of these and would prefer it not be used here, say so and it will be removed.</p>
+    </div>
+  </section>
+  </main>`);
+  parts.push(fabAndShell(0));
+  parts.push(`</div>`);
+  return parts.join('\n');
+}
+
 write('about.html', aboutPage());
+write('credits.html', creditsPage());
 write('temples.html', templesPage());
 write('panchangam.html', panchangPage());
 TEMPLES.items.forEach(t => write('temples/' + t.id + '.html', templePage(t.id)));

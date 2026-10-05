@@ -1,7 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-<defs><radialGradient id="g" cx="50%" cy="35%" r="75%">
-<stop offset="0%" stop-color="hsl(35,55%,82%)"/><stop offset="100%" stop-color="hsl(35,45%,38%)"/>
-</radialGradient></defs>
-<rect width="400" height="400" fill="url(#g)"/>
-<text x="200" y="235" font-family="Georgia,serif" font-size="170" fill="hsl(35,30%,22%)" text-anchor="middle">☬</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img" aria-label="Dattatreya">
+<title>Dattatreya</title>
+<defs>
+<radialGradient id="bg" cx="50%" cy="34%" r="78%">
+<stop offset="0%" stop-color="hsl(32,58%,84%)"/>
+<stop offset="58%" stop-color="hsl(32,50%,58%)"/>
+<stop offset="100%" stop-color="hsl(32,46%,32%)"/>
+</radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#ffe9b0"/><stop offset="55%" stop-color="#e8b64c"/><stop offset="100%" stop-color="#b8811f"/>
+</linearGradient>
+<linearGradient id="pale" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#fffdf6"/><stop offset="100%" stop-color="#e6dcc4"/>
+</linearGradient>
+<filter id="soft" x="-25%" y="-25%" width="150%" height="150%">
+<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".33"/>
+</filter>
+</defs>
+<rect width="400" height="400" fill="url(#bg)"/>
+<g filter="url(#soft)">
+<g transform="translate(200 176)">
+<g fill="url(#gold)">
+<path d="M-104 -58 Q-104 -96 -72 -96 L-72 -112 L-92 -112 L-92 -128 L-52 -128 L-52 -146 L-20 -146 L-20 -160 L20 -160 L20 -146 L52 -146 L52 -128 L92 -128 L92 -112 L72 -112 L72 -96 Q104 -96 104 -58 Q104 -40 104 -34 L-104 -34 Q-104 -40 -104 -58Z" transform="translate(-152 40) scale(.62)"/>
+</g>
+<g fill="url(#gold)">
+<path d="M-30 -104 Q-30 -136 0 -146 Q30 -136 30 -104 Q30 -88 30 -82 L-30 -82 Q-30 -88 -30 -104Z"/>
+<path d="M0 -146 L0 -172 L11 -152 L22 -170 L26 -148Z"/>
+</g>
+<g transform="translate(-62 6) rotate(-15)">
+<ellipse rx="34" ry="44" fill="#e6cb9e"/>
+<path d="M-30 -26 Q0 -62 30 -26 L30 -14 Q0 -44 -30 -14Z" fill="url(#gold)"/>
+<path d="M-4 -18 Q0 -4 4 -18" fill="none" stroke="#8a5a2a" stroke-width="3"/>
+<g fill="#2a1d10"><ellipse cx="-13" cy="-8" rx="6" ry="4"/><ellipse cx="13" cy="-8" rx="6" ry="4"/></g>
+<path d="M-10 18 Q0 25 10 18" fill="none" stroke="#8a5a2a" stroke-width="3"/>
+</g>
+<g transform="translate(62 6) rotate(15)">
+<ellipse rx="34" ry="44" fill="#e6cb9e"/>
+<path d="M-30 -26 Q0 -62 30 -26 L30 -14 Q0 -44 -30 -14Z" fill="url(#gold)"/>
+<path d="M-4 -18 Q0 -4 4 -18" fill="none" stroke="#8a5a2a" stroke-width="3"/>
+<g fill="#2a1d10"><ellipse cx="-13" cy="-8" rx="6" ry="4"/><ellipse cx="13" cy="-8" rx="6" ry="4"/></g>
+<path d="M-10 18 Q0 25 10 18" fill="none" stroke="#8a5a2a" stroke-width="3"/>
+</g>
+<g>
+<ellipse rx="46" ry="56" fill="#f4e2c2"/>
+<path d="M-42 -34 Q0 -76 42 -34 L42 -18 Q0 -56 -42 -18Z" fill="url(#gold)"/>
+<path d="M-5 -24 Q0 -6 5 -24" fill="none" stroke="#8a5a2a" stroke-width="3.5"/>
+<g fill="#2a1d10"><ellipse cx="-17" cy="-10" rx="7" ry="4.6"/><ellipse cx="17" cy="-10" rx="7" ry="4.6"/></g>
+<path d="M-13 24 Q0 32 13 24" fill="none" stroke="#8a5a2a" stroke-width="3.5"/>
+</g>
+<g fill="#3a2a1c">
+<ellipse cx="-132" cy="112" rx="30" ry="15"/><circle cx="-152" cy="98" r="11"/>
+<ellipse cx="132" cy="112" rx="30" ry="15"/><circle cx="152" cy="98" r="11"/>
+</g>
+</g>
+</g>
 </svg>

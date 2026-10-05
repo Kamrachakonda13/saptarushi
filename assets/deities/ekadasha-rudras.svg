@@ -1,7 +1,43 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img" aria-label="Ekadasha Rudras">
-<defs><radialGradient id="g" cx="50%" cy="35%" r="75%">
-<stop offset="0%" stop-color="hsl(6,55%,82%)"/><stop offset="100%" stop-color="hsl(6,45%,38%)"/>
-</radialGradient></defs>
-<rect width="400" height="400" fill="url(#g)"/>
-<text x="200" y="235" font-family="Georgia,serif" font-size="170" fill="hsl(6,30%,22%)" text-anchor="middle">🔱</text>
+<title>Ekadasha Rudras</title>
+<defs>
+<radialGradient id="bg" cx="50%" cy="34%" r="78%">
+<stop offset="0%" stop-color="hsl(240,58%,84%)"/>
+<stop offset="58%" stop-color="hsl(240,50%,58%)"/>
+<stop offset="100%" stop-color="hsl(240,46%,32%)"/>
+</radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#ffe9b0"/><stop offset="55%" stop-color="#e8b64c"/><stop offset="100%" stop-color="#b8811f"/>
+</linearGradient>
+<linearGradient id="pale" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#fffdf6"/><stop offset="100%" stop-color="#e6dcc4"/>
+</linearGradient>
+<filter id="soft" x="-25%" y="-25%" width="150%" height="150%">
+<feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#000" flood-opacity=".33"/>
+</filter>
+</defs>
+<rect width="400" height="400" fill="url(#bg)"/>
+<g filter="url(#soft)">
+<g transform="translate(200 204)">
+<g transform="translate(0 -56) scale(1.15)" fill="url(#gold)">
+<rect x="-5" y="-34" width="10" height="96" rx="4"/>
+<path d="M-46 -30 Q-46 -78 -22 -84 Q-22 -50 0 -50 Q22 -50 22 -84 Q46 -78 46 -30 Z"/>
+<rect x="-30" y="-36" width="60" height="9" rx="4"/>
+</g>
+<g transform="translate(0 42)">
+<path d="M-30 0 Q-30 -20 0 -20 Q30 -20 30 0 Q30 20 0 20 Q-30 20 -30 0Z" fill="url(#gold)"/>
+<ellipse cx="0" cy="-22" rx="14" ry="8" fill="#8c2f16"/>
+<path d="M0 -40 L0 -20" stroke="url(#gold)" stroke-width="4"/>
+</g>
+<g fill="none" stroke="url(#gold)" stroke-width="6" stroke-linecap="round" opacity=".9">
+<path d="M-104 -18 Q-78 -50 -50 -24"/>
+<path d="M104 -18 Q78 -50 50 -24"/>
+</g>
+<g fill="url(#gold)">
+<circle cx="-96" cy="-88" r="9"/><circle cx="96" cy="-88" r="9"/>
+<circle cx="-46" cy="-112" r="7"/><circle cx="46" cy="-112" r="7"/>
+<circle cx="0" cy="-132" r="8"/>
+</g>
+</g>
+</g>
 </svg>

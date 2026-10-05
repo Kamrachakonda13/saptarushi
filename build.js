@@ -58,6 +58,21 @@ const DEITY_PAGES = {
 const TEMPLES = JSON.parse(fs.readFileSync(path.join(ROOT, 'temples.json'), 'utf8'));
 const TEMPLE_CATS = TEMPLES.categories;
 const TEMPLE_CONTENT = JSON.parse(fs.readFileSync(path.join(ROOT, 'temples-content.json'), 'utf8'));
+
+// Home copy edited in the admin portal. Previously the Home tab wrote these to
+// content/admin-data.json and the build ignored the file entirely, so the hero a
+// visitor saw never changed. Defaults match what the hero used to hardcode.
+const ADMIN_STORE_PATH = path.join(ROOT, 'content', 'admin-data.json');
+const ADMIN_STORE = fs.existsSync(ADMIN_STORE_PATH)
+  ? JSON.parse(fs.readFileSync(ADMIN_STORE_PATH, 'utf8'))
+  : {};
+// Marker replaced by serve.js with cards for books added in the admin portal.
+const ADMIN_BOOK_SLOT = '<!--ADMIN_BOOKS-->';
+const HOME = Object.assign({
+  heroEyebrow: 'Telugu Bhakti \u00b7 ' + D.brand.tagline,
+  heroTitle: 'A quiet place to read.',
+  heroDesc: 'Devotional books and chants for every deity \u2014 gathered in one calm, easy-on-the-eyes place. Everything reads right here; nothing to download.',
+}, ADMIN_STORE.home || {});
 const BOOK_PAGES = {
   'venkateswara-mahatyam': 'వేంకటేశ్వర మహాత్మ్యం',
   'shiva-daily': 'శివ ఆరాధన',
@@ -861,9 +876,9 @@ function homePage() {
   parts.push(`<section class="hero-page">
     <div class="hero-flex">
       <div class="min-w-0 flex-1">
-        <p class="hero-eyebrow">Telugu Bhakti · ${D.brand.tagline}</p>
-        <h1 class="hero-title">A quiet place to read.</h1>
-        <p class="hero-desc">Devotional books and chants for every deity — gathered in one calm, easy-on-the-eyes place. Everything reads right here; nothing to download.</p>
+        <p class="hero-eyebrow">${esc(HOME.heroEyebrow)}</p>
+        <h1 class="hero-title">${esc(HOME.heroTitle)}</h1>
+        <p class="hero-desc">${esc(HOME.heroDesc)}</p>
         <div class="hero-actions">
           <a class="btn btn-outline" href="books.html">Read</a>
         </div>
@@ -915,7 +930,7 @@ function homePage() {
       <h2 class="section-title">Books</h2>
       <a class="see-all" href="books.html">All books</a>
     </div>
-    <div class="grid-books">${homeBooks.map(b => bookCard(0, b)).join('\n')}</div>
+    <div class="grid-books">${homeBooks.map(b => bookCard(0, b)).join('\n')}${ADMIN_BOOK_SLOT}</div>
   </section>`);
   // temples preview
   const featuredTemples = ['shakti', 'jyotirlinga', 'pancharama', 'chardham']
@@ -982,7 +997,7 @@ function booksPage() {
       <h1>Books</h1>
       <p>Open any book and read it here. Use the “Text size” buttons at the top right if you'd like bigger words.</p>
     </div>
-    <div class="grid-books" style="margin-top:1.5rem">${D.books.map(b => bookCard(0, b)).join('\n')}</div>
+    <div class="grid-books" style="margin-top:1.5rem">${D.books.map(b => bookCard(0, b)).join('\n')}${ADMIN_BOOK_SLOT}</div>
   </section>
   </main>`);
   parts.push(fabAndShell(0));

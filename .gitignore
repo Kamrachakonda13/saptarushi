@@ -18,3 +18,8 @@ media/audio/
 # Local backups
 *.bak
 .content-backup/
+# Admin console runtime store: home copy, admin books, audio metadata, asset
+# records. Written on every admin save, so versioning it would mean a commit per
+# keystroke-batch. build.js falls back to defaults when it is absent, so a fresh
+# clone builds correctly.
+content/admin-data.json

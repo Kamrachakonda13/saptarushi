@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
+const DC_STORE = require('./tools/deity-content-store');
 
 const root = __dirname;
 require('./lib/env').loadEnv();
@@ -120,6 +121,43 @@ function safeWrite(p, data) {
 }
 
 AUTH = loadAuth();
+
+// ---------------------------------------------------------------------------
+// Publishing
+// ---------------------------------------------------------------------------
+// The public site is a static build: build.js inlines books, deity content,
+// stotra and pooja pages into HTML. Before this existed, saving in the admin
+// wrote to content/admin-data.json and nothing read it, so an edit looked like
+// it had worked and never reached a reader. The build takes ~0.1s, so every
+// admin save republishes immediately instead of asking anyone to remember a
+// manual step.
+const BUILD_SCRIPT = path.join(root, 'build.js');
+let buildState = { running: false, at: null, ok: null, error: null, log: '' };
+
+function runBuild() {
+  if (buildState.running) return Promise.resolve(buildState);
+  buildState = { running: true, at: new Date().toISOString(), ok: null, error: null, log: '' };
+  return new Promise(resolve => {
+    const child = require('child_process').spawn(process.execPath, [BUILD_SCRIPT], {
+      cwd: root, stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let out = '';
+    const cap = s => { out += s; if (out.length > 8000) out = out.slice(-8000); };
+    child.stdout.on('data', cap);
+    child.stderr.on('data', cap);
+    const done = code => {
+      buildState.running = false;
+      buildState.ok = code === 0;
+      buildState.error = code === 0 ? null : ('build exited ' + code);
+      buildState.log = out.trim().split('\n').slice(-12).join('\n');
+      resolve(buildState);
+    };
+    child.on('close', done);
+    child.on('error', e => { buildState.error = e.message; done(1); });
+    // Never let a wedged build hold a request open indefinitely.
+    setTimeout(() => { try { child.kill('SIGKILL'); } catch (_) {} }, 60000).unref();
+  });
+}
 
 function readStore() {
   try {
@@ -392,6 +430,71 @@ function generateBookPage(book) {
 </html>`;
 }
 
+
+// Admin-created books live in content/books/<slug>.json and are rendered by the
+// dynamic reader at /books/<slug>.html. The listing pages are static, so those
+// books were reachable only if you already knew the URL: they never appeared in
+// books.html, the homepage preview or search. Injecting them at request time
+// keeps one source of truth and needs no rebuild.
+const ADMIN_BOOK_SLUG = /^[a-z0-9][a-z0-9\-]*$/i;
+
+function adminBooks() {
+  const dir = path.join(CONTENT_DIR, 'books');
+  if (!fs.existsSync(dir)) return [];
+  const out = [];
+  for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort()) {
+    const slug = f.replace(/\.json$/, '');
+    if (!ADMIN_BOOK_SLUG.test(slug)) continue;
+    try {
+      const b = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+      if (!b || (b.title === undefined && b.en === undefined)) continue;
+      // A file only counts as an admin book if it is either registered in the
+      // store or has the admin payload shape. This deliberately skips unrelated
+      // JSON that happens to live in the same folder.
+      const store = readStore();
+      const registered = (store.books || []).some(x => x.slug === slug);
+      const looksAdmin = typeof b.text === 'string' || typeof b.textTe === 'string';
+      if (!registered && !looksAdmin) continue;
+      // Skip anything the build already renders as a static page.
+      if (fs.existsSync(path.join(BOOKS_DIR, slug + '.html'))) continue;
+      out.push({
+        slug,
+        title: b.title || b.en || slug,
+        titleTe: b.titleTe || b.te || '',
+        meta: b.sub || b.meta || 'Added in the admin portal',
+        deity: b.deity || '',
+        isNew: b.isNew !== false,
+      });
+    } catch (_) { /* skip unreadable book file */ }
+  }
+  return out;
+}
+
+function adminBookCards() {
+  return adminBooks().map(b => {
+    const img = (() => {
+      const d = String(b.deity || '').toLowerCase().split(/[^a-z]+/).filter(Boolean)[0];
+      const p = d && path.join(root, 'assets', 'deities', d + '.jpg');
+      return p && fs.existsSync(p) ? 'assets/deities/' + d + '.jpg' : '';
+    })();
+    const t = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return `<a class="book-card" href="/books/${encodeURIComponent(b.slug)}.html">`
+      + (img ? `<img class="book-cover-img" src="/${t(img)}" alt="${t(b.title)}" loading="lazy"/>` : '')
+      + `<div class="min-w-0 flex-1">`
+      + `<p class="book-te" lang="te">${t(b.titleTe || b.title)}</p>`
+      + `<p class="book-en">${t(b.title)}</p>`
+      + `<p class="book-meta">${t(b.meta)}</p>`
+      + `</div></a>`;
+  }).join('\n');
+}
+
+// Inject before the closing tag of the first matching container.
+function injectBefore(html, needle, addition) {
+  const at = html.indexOf(needle);
+  if (at < 0 || !addition) return html;
+  return html.slice(0, at) + addition + html.slice(at);
+}
+
 function generateAudioPage(track) {
   const t = (s) => String(s || '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
   return `<!DOCTYPE html><html lang="en" data-text-size="base"><head>
@@ -411,16 +514,102 @@ function generateAudioPage(track) {
 /* --------------------------------------------------------------------------
    HTTP server
 -------------------------------------------------------------------------- */
+// ---------------------------------------------------------------------------
+// Path exposure guard
+// ---------------------------------------------------------------------------
+// The server hands out anything under the project root, which used to include
+// /.env and content/admin-auth.json. That published the admin password in
+// plaintext and a PBKDF2 hash+Salt to any anonymous visitor, and an account
+// takeover followed from it (verified, not theoretical). Nothing the public
+// site serves reads these paths: build.js inlines content into the HTML, so
+// content/ is build-time input only, and data.js / stotras-runtime.js live at
+// the root where they are still reachable.
+//
+// Two rules, both default-deny for anything that smells private:
+//   1. Any path segment beginning with "." is refused. Covers .env, .git,
+//      .venv, .content-backup and every editor/OS sidecar.
+//   2. An explicit list of build-time and server-side directories and files.
+const PRIVATE_DIRS = ['content', 'uploads', 'tools', 'app', 'node_modules', '.venv', '.git'];
+const PRIVATE_FILES = new Set([
+  'admin-auth.json', 'admin-data.json', 'token.txt', 'env.js',
+  // Server and build sources: nothing links to them, and they describe how the
+  // admin guard works, which is not something to hand out. Deliberately NOT
+  // listed: data.js, app.js, search.js and friends, which every page loads.
+  'serve.js', 'build.js', 'build-rss.js', 'build-search-index.js',
+  'check-content.js', 'check-deity-state.js',
+]);
+
+function exposureReason(pathname) {
+  const clean = pathname.replace(/^\/+/, '');
+  if (!clean) return null;
+  const segments = clean.split('/').filter(Boolean);
+  // Traversal that escaped root is handled separately, but refuse it here too
+  // rather than letting it reach the filesystem check.
+  if (segments.includes('..')) return 'path traversal';
+  if (segments.some(s => s.startsWith('.'))) return 'dotfile';
+  const top = segments[0];
+  if (PRIVATE_DIRS.includes(top)) return 'build-time directory';
+  if (segments.length === 1 && PRIVATE_FILES.has(top)) return 'server-side file';
+  if (segments.length === 1 && /\.(bak|orig|rej|swp)$/i.test(top)) return 'backup file';
+  return null;
+}
+
+function clientIp(req) {
+  return String(req.socket && req.socket.remoteAddress || 'unknown');
+}
+
+// Login throttling. Password guessing was previously unmetered: 25 consecutive
+// failures produced 25 identical 401s with no lockout and no delay.
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILS = 5;
+const loginFails = new Map(); // ip -> { count, firstAt, lockedUntil }
+
+function loginBlocked(ip) {
+  const rec = loginFails.get(ip);
+  if (!rec) return 0;
+  if (rec.lockedUntil && rec.lockedUntil > Date.now()) return Math.ceil((rec.lockedUntil - Date.now()) / 1000);
+  if (Date.now() - rec.firstAt > LOGIN_WINDOW_MS) loginFails.delete(ip);
+  return 0;
+}
+function noteLoginFailure(ip) {
+  const rec = loginFails.get(ip) || { count: 0, firstAt: Date.now(), lockedUntil: 0 };
+  if (Date.now() - rec.firstAt > LOGIN_WINDOW_MS) { rec.count = 0; rec.firstAt = Date.now(); }
+  rec.count += 1;
+  if (rec.count >= LOGIN_MAX_FAILS) rec.lockedUntil = Date.now() + LOGIN_WINDOW_MS;
+  loginFails.set(ip, rec);
+  return rec;
+}
+function clearLoginFailures(ip) { loginFails.delete(ip); }
+
 http.createServer((req, res) => {
   const urlObj = new URL(req.url, 'http://localhost');
   let url = decodeURIComponent(urlObj.pathname);
   const query = Object.fromEntries(urlObj.searchParams);
 
-  // ---- CORS for local dev ----
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Pin, X-Admin-Token');
+  // ---- CORS ----
+  // Was Access-Control-Allow-Origin: *, which let any site on the internet
+  // script authenticated calls against this server from a visitor's browser.
+  // The admin panel is same-origin, so no CORS grant is needed; localhost is
+  // echoed back only to keep split-port dev workflows working.
+  const origin = String(req.headers.origin || '');
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Admin-Pin, X-Admin-Token');
+  }
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
+
+  // ---- Refuse private paths before anything else touches them ----
+  // Skipped for /api/* because that prefix is the route namespace, not the
+  // physical api/ directory; the API does its own per-endpoint auth.
+  if (!url.startsWith('/api/')) {
+    const leak = exposureReason(url);
+    if (leak) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Not found');
+    }
+  }
 
   // =================== API routes ===================
   if (url.startsWith('/api/')) {
@@ -428,11 +617,30 @@ http.createServer((req, res) => {
 
     // ---------- auth ----------
     if (p === 'login' && req.method === 'POST') {
+      const ip = clientIp(req);
+      const wait = loginBlocked(ip);
+      if (wait) {
+        return json(res, 429, {
+          ok: false,
+          error: `Too many failed sign-in attempts. Try again in ${Math.ceil(wait / 60)} minute(s).`,
+          retryAfter: wait,
+        });
+      }
       return collectUploads(req).then(({ fields }) => {
         const user = String(fields.user || fields.username || '').trim();
         const pass = String(fields.pass || fields.password || '');
         const ok = user === AUTH.username && verifyPassword(pass, AUTH);
-        if (!ok) return json(res, 401, { ok: false, error: 'Wrong username or password' });
+        if (!ok) {
+          const rec = noteLoginFailure(ip);
+          const left = Math.max(0, LOGIN_MAX_FAILS - rec.count);
+          return json(res, 401, {
+            ok: false,
+            error: left > 0
+              ? `Wrong username or password. ${left} attempt(s) left before a temporary lockout.`
+              : 'Wrong username or password.',
+          });
+        }
+        clearLoginFailures(ip);
         const token = issueSession(user);
         json(res, 200, { ok: true, token, user });
       });
@@ -479,6 +687,7 @@ http.createServer((req, res) => {
 
     // ---------- GET media list ----------
     if (p === 'media' && req.method === 'GET') {
+      if (!authed(req)) return json(res, 401, { error: 'Not authorised' });
       const audioIndex = rebuildAudioManifest();
       const bookDir = path.join(MEDIA_DIR, 'books');
       const books = [];
@@ -508,6 +717,7 @@ http.createServer((req, res) => {
 
     // ---------- GET admin data ----------
     if (p === 'content' && req.method === 'GET') {
+      if (!authed(req)) return json(res, 401, { error: 'Not authorised' });
       return json(res, 200, readStore());
     }
 
@@ -522,7 +732,9 @@ http.createServer((req, res) => {
             if (k in patch) store[k] = patch[k];
           }
           writeStore(store);
-          json(res, 200, { ok: true, saved: true });
+          // Home copy and temple notes are baked into static HTML, so a save
+          // has to republish or the edit stays invisible.
+          return runBuild().then(() => json(res, 200, { ok: true, saved: true, published: true }));
         } catch (e) { json(res, 400, { error: 'Bad JSON — ' + e.message }); }
       });
     }
@@ -604,7 +816,9 @@ http.createServer((req, res) => {
           writeStore(store);
           // also write a friendly JSON per book for the reader
           safeWrite(path.join(CONTENT_DIR, 'books', book.slug + '.json'), JSON.stringify(book, null, 2));
-          json(res, 200, { ok: true, slug: book.slug });
+          // Republish so the title actually appears on the site. The build is
+          // fast enough to do synchronously without the admin feeling a wait.
+          return runBuild().then(() => json(res, 200, { ok: true, slug: book.slug, published: true }));
         } catch (e) { json(res, 400, { error: 'Bad JSON — ' + e.message }); }
       });
     }
@@ -623,6 +837,49 @@ http.createServer((req, res) => {
     if (p === 'books' && req.method === 'GET') {
       const store = readStore();
       return json(res, 200, { store: store.books, files: fs.readdirSync(BOOKS_DIR).filter(f => f.endsWith('.html')) });
+    }
+
+    // ---------- Public library index ----------
+    // Book text is public by nature, but the admin store carries internal
+    // bookkeeping (isNew, addedAt, ids) that no reader needs. This is the only
+    // unauthenticated surface for admin-created books, and it deliberately
+    // projects a narrow set of fields.
+    if (p === 'library' && req.method === 'GET') {
+      const store = readStore();
+      return json(res, 200, {
+        books: (store.books || []).map(b => ({
+          slug: b.slug, en: b.en || b.title, te: b.te || '', deity: b.deity || '',
+          meta: b.meta || '', chapters: b.chapters || [], isNew: !!b.isNew,
+          source: b.source || 'admin',
+        })),
+      });
+    }
+
+    // ---------- DELETE book ----------
+    // Previously the UI only removed the entry from the admin store. The
+    // per-book JSON on disk was left behind and the dynamic route kept serving
+    // the page at HTTP 200, so "deleted" books stayed publicly reachable.
+    if (/^book\//.test(p) && req.method === 'DELETE') {
+      if (!authed(req)) return json(res, 401, { error: 'Not authorised' });
+      const slug = decodeURIComponent(p.slice(5));
+      if (!/^[a-z0-9][a-z0-9\-]*$/i.test(slug)) return json(res, 400, { error: 'Invalid slug' });
+      const store = readStore();
+      const before = (store.books || []).length;
+      store.books = (store.books || []).filter(b => b.slug !== slug);
+      const wasAdminBook = store.books.length !== before;
+      writeStore(store);
+      // Remove the content file that feeds the dynamic book route.
+      const contentFile = path.join(CONTENT_DIR, 'books', slug + '.json');
+      let removedContent = false;
+      if (fs.existsSync(contentFile)) { fs.unlinkSync(contentFile); removedContent = true; }
+      // A generated static page would keep serving too, so clear it and let the
+      // rebuild regenerate the listing without this title.
+      const staticPage = path.join(BOOKS_DIR, slug + '.html');
+      let removedPage = false;
+      if (fs.existsSync(staticPage)) { fs.unlinkSync(staticPage); removedPage = true; }
+      return runBuild().then(() => json(res, 200, {
+        ok: true, slug, wasAdminBook, removedContent, removedPage,
+      }));
     }
 
     // ---------- DELETE media ----------
@@ -690,6 +947,92 @@ http.createServer((req, res) => {
           json(res, 200, { ok: true, entry });
         } catch (e) { json(res, 400, { error: 'Bad JSON — ' + e.message }); }
       });
+    }
+
+    // ---------- deity content (stotras, poojas, mantras, prasadam, homa) -----
+    // These 279 items lived only in content/<slug>-content.js with no admin
+    // surface, so correcting a typo in a stotra meant editing source by hand.
+    if (p === 'deity-content/index' && req.method === 'GET') {
+      if (!authed(req)) return json(res, 401, { error: 'Not authorised' });
+      return json(res, 200, { kinds: DC_STORE.KINDS, bodyField: DC_STORE.BODY_FIELD, deities: DC_STORE.index() });
+    }
+
+    if (p === 'deity-content' && req.method === 'GET') {
+      if (!authed(req)) return json(res, 401, { error: 'Not authorised' });
+      const slug = String(query.deity || '').trim();
+      if (!/^[a-z0-9][a-z0-9\-]*$/i.test(slug)) return json(res, 400, { error: 'Invalid deity slug' });
+      const data = DC_STORE.read(slug);
+      if (!data) return json(res, 404, { error: 'No content file for ' + slug });
+      if (data.__error) return json(res, 500, { error: data.__error });
+      return json(res, 200, data);
+    }
+
+    // Upsert or delete a single item, then republish.
+    if (p === 'deity-content' && req.method === 'POST') {
+      if (!authed(req)) return json(res, 401, { error: 'Not authorised' });
+      return collectUploads(req).then(async ({ fields }) => {
+        let msg;
+        try { msg = JSON.parse(fields.data || '{}'); }
+        catch (e) { return json(res, 400, { error: 'Bad JSON — ' + e.message }); }
+        const slug = String(msg.deity || '').trim();
+        const kind = String(msg.kind || '').trim();
+        if (!/^[a-z0-9][a-z0-9\-]*$/i.test(slug)) return json(res, 400, { error: 'Invalid deity slug' });
+        if (!DC_STORE.KINDS.includes(kind)) return json(res, 400, { error: 'Unknown content kind' });
+
+        const data = DC_STORE.read(slug);
+        if (!data || data.__error) return json(res, 404, { error: 'No content file for ' + slug });
+        if (!Array.isArray(data[kind])) data[kind] = [];
+
+        if (msg.op === 'delete') {
+          const before = data[kind].length;
+          data[kind] = data[kind].filter(it => it.slug !== msg.itemSlug);
+          if (data[kind].length === before) return json(res, 404, { error: 'No item with slug ' + msg.itemSlug });
+          DC_STORE.write(slug, data);
+          // build.js emits one page per item, and it never prunes pages for items
+          // that no longer exist. Without this, a deleted stotra kept its own
+          // page published and reachable -- the same orphan the book delete had.
+          const pageDirs = { stotras: 'stotras', poojas: 'poojas', mantras: 'mantras', homa: 'homa', prasadam: 'prasadam' };
+          const dir = pageDirs[kind];
+          let removedPage = false;
+          if (dir) {
+            const page = path.join(root, dir, msg.itemSlug + '.html');
+            if (fs.existsSync(page)) { fs.unlinkSync(page); removedPage = true; }
+          }
+          return runBuild().then(() => json(res, 200, {
+            ok: true, op: 'delete', remaining: data[kind].length, removedPage, published: true,
+          }));
+        }
+
+        const item = msg.item || {};
+        item.slug = DC_STORE.ensureSlug(item.slug, item.te, item.en);
+        if (!item.slug) return json(res, 400, { error: 'An item needs a slug or a title' });
+        item.te = String(item.te || '');
+        item.en = String(item.en || '');
+        if (!item.te && !item.en) return json(res, 400, { error: 'An item needs Telugu or English text' });
+        if (Array.isArray(msg.body)) {
+          const field = DC_STORE.BODY_FIELD[kind];
+          item[field] = msg.body.map(x => String(x)).filter(x => x.trim().length);
+        }
+        const idx = data[kind].findIndex(it => it.slug === item.slug);
+        if (idx >= 0) data[kind][idx] = Object.assign({}, data[kind][idx], item);
+        else data[kind].push(item);
+        DC_STORE.write(slug, data);
+        return runBuild().then(() => json(res, 200, {
+          ok: true, op: idx >= 0 ? 'update' : 'create', slug: item.slug,
+          count: data[kind].length, published: true,
+        }));
+      });
+    }
+
+    // ---------- publishing ----------
+    if (p === 'publish' && req.method === 'POST') {
+      if (!authed(req)) return json(res, 401, { error: 'Not authorised' });
+      return runBuild().then(state => json(res, state.ok ? 200 : 500, {
+        ok: !!state.ok, at: state.at, error: state.error, log: state.log,
+      }));
+    }
+    if (p === 'publish-status' && req.method === 'GET') {
+      return json(res, 200, buildState);
     }
 
     // ---------- GET health ----------
@@ -787,7 +1130,22 @@ http.createServer((req, res) => {
 
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); return res.end('Not found'); }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream' });
+    const ext = path.extname(file).toLowerCase();
+    // List pages get admin-created books spliced in, so a title saved in the
+    // admin portal is actually discoverable without a rebuild.
+    if (ext === '.html') {
+      let html = data.toString('utf8');
+      // Replace the build's marker rather than pattern-matching markup, so a
+      // change to the surrounding template cannot silently break this.
+      const slotMark = '<!--ADMIN_BOOKS-->';
+      if (html.includes(slotMark)) {
+        html = html.split(slotMark).join(adminBookCards());
+        const body = Buffer.from(html, 'utf8');
+        res.writeHead(200, { 'Content-Type': MIME['.html'], 'Content-Length': body.length });
+        return res.end(body);
+      }
+    }
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
     res.end(data);
   });
 }).listen(port, () => {

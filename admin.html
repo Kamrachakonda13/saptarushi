@@ -46,6 +46,74 @@
         <p id="loginMsg" class="save-err" style="margin-top:0.75rem;text-align:center"></p>
       </form>
     </div>
+
+    <!-- ============ DEITY CONTENT TAB ============ -->
+    <section class="admin-panel" data-panel="content">
+      <div class="admin-card">
+        <h3>Deity content</h3>
+        <p style="color:var(--ink-70);margin-bottom:0.9rem">
+          Stotras, poojas, mantras, prasadam and homa for every deity. Edits save to
+          <code>content/&lt;deity&gt;-content.js</code> and republish straight away — no build step to remember.
+        </p>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+          <div class="admin-field" style="min-width:220px;margin:0">
+            <label for="dcDeity">Deity</label>
+            <select id="dcDeity"></select>
+          </div>
+          <div class="admin-field" style="min-width:170px;margin:0">
+            <label for="dcKind">Section</label>
+            <select id="dcKind"></select>
+          </div>
+          <div class="admin-field" style="min-width:200px;margin:0">
+            <label for="dcFilter">Search</label>
+            <input id="dcFilter" placeholder="filter by title…" />
+          </div>
+          <button class="admin-btn" id="dcNewBtn" type="button">+ New item</button>
+          <span id="dcStatus" class="save-ok"></span>
+        </div>
+      </div>
+
+      <div class="admin-card" id="dcListCard">
+        <div id="dcList"></div>
+      </div>
+
+      <div class="admin-card" id="dcEditor" style="display:none">
+        <h3 id="dcEditorTitle">Edit item</h3>
+        <div style="display:flex;gap:1rem;flex-wrap:wrap">
+          <div class="admin-field" style="flex:1;min-width:200px;margin:0">
+            <label for="dcTe">Title (తెలుగు)</label>
+            <input id="dcTe" class="font-te"/>
+          </div>
+          <div class="admin-field" style="flex:1;min-width:200px;margin:0">
+            <label for="dcEn">Title (English)</label>
+            <input id="dcEn"/>
+          </div>
+          <div class="admin-field" style="flex:1;min-width:160px;margin:0">
+            <label for="dcSlug">Slug</label>
+            <input id="dcSlug"/>
+          </div>
+          <div class="admin-field" style="flex:1;min-width:160px;margin:0">
+            <label for="dcType">Type</label>
+            <input id="dcType" placeholder="optional"/>
+          </div>
+        </div>
+        <div class="admin-field" style="margin-top:1rem">
+          <label id="dcBodyLabel" for="dcBody">Body</label>
+          <textarea id="dcBody" class="font-te" style="min-height:280px;font-size:1.05rem;line-height:2"></textarea>
+          <p class="empty-note" id="dcBodyHint" style="margin-top:0.4rem"></p>
+        </div>
+        <div class="admin-field" id="dcExtraWrap" style="margin-top:0.8rem;display:none">
+          <label for="dcExtra">Notes / meaning / usage</label>
+          <textarea id="dcExtra" style="min-height:90px"></textarea>
+        </div>
+        <div style="display:flex;gap:0.75rem;align-items:center;margin-top:1.25rem">
+          <button class="admin-btn" id="dcSaveBtn" type="button">💾 Save &amp; publish</button>
+          <span id="dcSaveMsg" class="save-ok"></span>
+          <button class="admin-btn ghost" id="dcCancelBtn" type="button" style="margin-left:auto">Close</button>
+          <button class="admin-btn danger" id="dcDeleteBtn" type="button">Delete item</button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- ===== Console ===== -->
@@ -55,6 +123,7 @@
       <button class="admin-tab" data-tab="audio">🔊 Audio</button>
       <button class="admin-tab" data-tab="books">📖 Books</button>
       <button class="admin-tab" data-tab="media">🗂 Media library</button>
+      <button class="admin-tab" data-tab="content">📜 Deity content</button>
     </div>
 
     <!-- ============ HOME TAB ============ -->
@@ -629,11 +698,20 @@
   $('#bkToSa').addEventListener('click', function () { $('#bkText').value = LangLib.toDevanagari($('#bkText').value); syncBookLang('sa'); });
   $('#bkSaveBtn').addEventListener('click', saveBook);
   $('#bkDeleteBtn').addEventListener('click', function () {
-    if (!confirm('Delete this admin book?')) return;
-    var books = STORE.books || [];
-    var idx = books.findIndex(function (b) { return b.slug === editingSlug; });
-    if (idx >= 0) { books.splice(idx, 1); STORE.books = books; }
-    api('api/content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: JSON.stringify({ books: STORE.books }) }) }).then(function () { editingSlug = null; $('#bookEditor').style.display = 'none'; renderBookList(); });
+    if (!confirm('Delete this book? This removes its content file and unpublishes the page.')) return;
+    var slug = editingSlug;
+    if (!slug) return;
+    // Previously this only dropped the row from the admin store: the per-book
+    // JSON stayed on disk and /books/<slug>.html kept returning HTTP 200, so a
+    // "deleted" book was still readable. The server now removes both and
+    // republishes.
+    api('api/book/' + encodeURIComponent(slug), { method: 'DELETE' }).then(function (d) {
+      if (d.error) { toast(d.error, true); return; }
+      toast('Book deleted ✓');
+      editingSlug = null;
+      $('#bookEditor').style.display = 'none';
+      loadStore();
+    });
   });
 
   wireDropzone($('#bkAudioDrop'), $('#bkAudioFile'), function (files) {
@@ -659,6 +737,189 @@
           toast('PDF text extracted ✓');
         } else { info.innerHTML = '<span class="save-err">' + esc(d.error || 'Could not extract text from this PDF (it may be a scanned image).') + '</span>'; }
       });
+  });
+
+
+  /* ---------- Deity content: stotras / poojas / mantras / prasadam / homa ----------
+     These had no admin surface at all, so all 279 items could only be changed by
+     editing content/<slug>-content.js by hand. Saves go to the server, which
+     rewrites that file and republishes, so an edit is live immediately. */
+  var DC = { kinds: [], bodyField: {}, deities: [], slug: '', kind: '', data: null, editing: null };
+
+  function dcStatus(msg, isErr) {
+    var el = $('#dcStatus');
+    el.textContent = msg || '';
+    el.className = isErr ? 'save-err' : 'save-ok';
+  }
+
+  function dcLoadIndex() {
+    return api('api/deity-content/index').then(function (d) {
+      if (d.error) { dcStatus(d.error, true); return; }
+      DC.kinds = d.kinds || [];
+      DC.bodyField = d.bodyField || {};
+      DC.deities = (d.deities || []).filter(function (x) { return !x.error; });
+      var sel = $('#dcDeity'), keep = sel.value;
+      sel.innerHTML = DC.deities.map(function (x) {
+        var n = Object.keys(x.counts || {}).reduce(function (a, k) { return a + x.counts[k]; }, 0);
+        return '<option value="' + esc(x.slug) + '">' + esc(x.label || x.slug) + ' (' + n + ')</option>';
+      }).join('');
+      if (keep) sel.value = keep;
+      var ks = $('#dcKind');
+      ks.innerHTML = DC.kinds.map(function (k) { return '<option value="' + k + '">' + k + '</option>'; }).join('');
+      if (!DC.slug && DC.deities.length) DC.slug = sel.value;
+      dcRenderCounts();
+    });
+  }
+
+  function dcRenderCounts() {
+    var d = DC.deities.find(function (x) { return x.slug === DC.slug; });
+    if (!d) return;
+    var base = DC.kinds.reduce(function (n, k) { return n + ((d.counts || {})[k] || 0); }, 0);
+    dcStatus(base + ' item(s) for ' + (d.label || DC.slug), false);
+  }
+
+  function dcLoadDeity() {
+    if (!DC.slug) return;
+    dcStatus('Loading…', false);
+    return api('api/deity-content?deity=' + encodeURIComponent(DC.slug)).then(function (d) {
+      if (d.error) { dcStatus(d.error, true); $('#dcList').innerHTML = ''; return; }
+      DC.data = d;
+      dcRenderList();
+      dcRenderCounts();
+    });
+  }
+
+  function dcCurrentItems() {
+    if (!DC.data) return [];
+    return Array.isArray(DC.data[DC.kind]) ? DC.data[DC.kind] : [];
+  }
+
+  function dcRenderList() {
+    var q = ($('#dcFilter').value || '').toLowerCase();
+    var items = dcCurrentItems().filter(function (it) {
+      if (!q) return true;
+      return ((it.te || '') + ' ' + (it.en || '') + ' ' + (it.slug || '')).toLowerCase().indexOf(q) >= 0;
+    });
+    var field = DC.bodyField[DC.kind];
+    if (!items.length) {
+      $('#dcList').innerHTML = '<p class="empty-note">Nothing here yet. Use “+ New item” to add the first one.</p>';
+      return;
+    }
+    $('#dcList').innerHTML =
+      '<p class="empty-note" style="margin-bottom:0.7rem">' + items.length + ' shown' +
+      (items.length !== dcCurrentItems().length ? ' of ' + dcCurrentItems().length : '') + '</p>' +
+      items.map(function (it) {
+        var body = Array.isArray(it[field]) ? it[field].length + ' line(s)' : (it[field] ? 'text' : '—');
+        return '<div class="mp-row" style="align-items:flex-start;padding:0.7rem 0;border-bottom:1px solid rgba(120,90,50,0.18)">' +
+          '<div style="flex:1;min-width:0">' +
+            '<div><strong lang="te">' + esc(it.te || it.en || it.slug) + '</strong>' +
+            (it.en ? ' <span style="color:var(--ink-70)">· ' + esc(it.en) + '</span>' : '') + '</div>' +
+            '<div style="font-size:0.82rem;color:var(--ink-70)">' + esc(it.slug || '') + ' · ' + body + '</div>' +
+          '</div>' +
+          '<button class="admin-btn ghost" data-dc-edit="' + esc(it.slug) + '" type="button">Edit</button>' +
+        '</div>';
+      }).join('');
+  }
+
+  function dcOpenEditor(slug) {
+    var field = DC.bodyField[DC.kind];
+    var it = slug ? dcCurrentItems().find(function (x) { return x.slug === slug; }) : null;
+    DC.editing = slug || null;
+    $('#dcEditor').style.display = '';
+    $('#dcEditorTitle').textContent = it ? 'Edit item' : 'New ' + DC.kind.replace(/s$/, '');
+    $('#dcTe').value = it ? (it.te || '') : '';
+    $('#dcEn').value = it ? (it.en || '') : '';
+    $('#dcSlug').value = it ? (it.slug || '') : '';
+    $('#dcType').value = it ? (it.type || '') : '';
+    $('#dcBody').value = it ? (Array.isArray(it[field]) ? it[field].join('\n') : (it[field] || '')) : '';
+    $('#dcBodyLabel').textContent = 'Body — one line per entry (' + field + ')';
+    // Only some kinds carry a free-text note worth editing here.
+    var extra = ['mantras', 'homa'].indexOf(DC.kind) >= 0;
+    $('#dcExtraWrap').style.display = extra ? '' : 'none';
+    $('#dcExtra').value = it ? (it.meaning || it.usage || it.note || '') : '';
+    $('#dcSaveMsg').textContent = '';
+    $('#dcTe').focus();
+  }
+
+  $('#dcDeity').addEventListener('change', function () {
+    DC.slug = $('#dcDeity').value;
+    $('#dcEditor').style.display = 'none';
+    DC.editing = null;
+    dcLoadDeity();
+  });
+  $('#dcKind').addEventListener('change', function () {
+    DC.kind = $('#dcKind').value;
+    $('#dcEditor').style.display = 'none';
+    DC.editing = null;
+    dcRenderList();
+  });
+  $('#dcFilter').addEventListener('input', dcRenderList);
+  $('#dcNewBtn').addEventListener('click', function () { dcOpenEditor(null); });
+  $('#dcCancelBtn').addEventListener('click', function () {
+    $('#dcEditor').style.display = 'none'; DC.editing = null;
+  });
+  $('#dcList').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-dc-edit]');
+    if (b) dcOpenEditor(b.getAttribute('data-dc-edit'));
+  });
+
+  $('#dcSaveBtn').addEventListener('click', function () {
+    var msg = $('#dcSaveMsg');
+    var field = DC.bodyField[DC.kind];
+    var item = {
+      slug: $('#dcSlug').value.trim(),
+      te: $('#dcTe').value.trim(),
+      en: $('#dcEn').value.trim(),
+      type: $('#dcType').value.trim(),
+    };
+    var extraVal = $('#dcExtra').value.trim();
+    if (extraVal) {
+      if (DC.kind === 'mantras') { item.meaning = extraVal; item.mantra = item.mantra || ''; }
+      else if (DC.kind === 'homa') item.note = extraVal;
+    }
+    var body = $('#dcBody').value;
+    // Mantras hold a single string; everything else is a list of lines.
+    var isList = field !== 'mantra' && field !== 'note';
+    var payload = {
+      deity: DC.slug, kind: DC.kind, item: item,
+      body: isList ? body.split(/\r?\n/).map(function (x) { return x.trim(); }).filter(Boolean) : body,
+    };
+    if (DC.kind === 'mantras') payload.item.mantra = body;
+    if (DC.kind === 'homa' && !payload.item.note) payload.item.note = body;
+    msg.textContent = 'Saving…';
+    api('api/deity-content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: JSON.stringify(payload) }) })
+      .then(function (d) {
+        if (d.error) { msg.className = 'save-err'; msg.textContent = d.error; return; }
+        msg.className = 'save-ok';
+        msg.textContent = (d.op === 'create' ? 'Created' : 'Updated') + ' and published ✓';
+        toast('Deity content published ✓');
+        $('#dcEditor').style.display = 'none';
+        DC.editing = null;
+        dcLoadIndex().then(dcLoadDeity);
+      });
+  });
+
+  $('#dcDeleteBtn').addEventListener('click', function () {
+    var slug = DC.editing || $('#dcSlug').value.trim();
+    if (!slug) return;
+    if (!confirm('Delete "' + slug + '" from ' + DC.slug + '? This republishes immediately.')) return;
+    var payload = { deity: DC.slug, kind: DC.kind, op: 'delete', itemSlug: slug };
+    api('api/deity-content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: JSON.stringify(payload) }) })
+      .then(function (d) {
+        if (d.error) { toast(d.error, true); return; }
+        toast('Deleted and published ✓');
+        $('#dcEditor').style.display = 'none';
+        DC.editing = null;
+        dcLoadIndex().then(dcLoadDeity);
+      });
+  });
+
+  // Load the picker when the tab is first opened.
+  $('#adminTabs').addEventListener('click', function (e) {
+    var tab = e.target.closest('.admin-tab'); if (!tab) return;
+    if (tab.getAttribute('data-tab') === 'content' && !DC.deities.length) {
+      dcLoadIndex().then(function () { DC.kind = $('#dcKind').value || DC.kinds[0]; dcLoadDeity(); });
+    }
   });
 
   $('#topBtn').addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });

@@ -303,9 +303,18 @@ const SPEC = [
   ['gayatri', 'Gayatri', 52, 'gayatri'],
 ];
 
-let written = 0, missing = 0;
+let written = 0, missing = 0, skipped = 0;
 for (const [slug, label, hue, artKey] of SPEC) {
   const dest = path.join(OUT, slug + '.svg');
+  // A second pass over Wikipedia article leads and Commons categories found real
+  // photographs for most of these, so they are no longer symbol-only. Never
+  // resurrect an SVG where a photograph now exists; it would be a dead file
+  // that silently shadows nothing and misleads whoever reads it next.
+  if (fs.existsSync(path.join(OUT, slug + '.jpg')) || fs.existsSync(path.join(OUT, slug + '.png'))) {
+    console.log('  skip  ' + slug.padEnd(20) + 'photograph now exists');
+    skipped++;
+    continue;
+  }
   if (!ART[artKey]) { console.log('  no motif for ' + artKey); missing++; continue; }
   if (CHECK) {
     if (!fs.existsSync(dest)) { console.log('  MISSING ' + slug + '.svg'); missing++; }
@@ -316,5 +325,5 @@ for (const [slug, label, hue, artKey] of SPEC) {
   console.log('  drew ' + slug.padEnd(20) + hue + '  ' + artKey);
   written++;
 }
-console.log('\n' + written + ' drawn' + (missing ? ', ' + missing + ' missing' : ''));
+console.log('\n' + written + ' drawn' + (skipped ? ', ' + skipped + ' skipped (photo exists)' : '') + (missing ? ', ' + missing + ' missing' : ''));
 process.exitCode = missing ? 1 : 0;

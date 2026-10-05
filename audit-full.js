@@ -41,7 +41,7 @@ const REQUIRED = [
   'index.html', 'books.html', 'about.html', 'temples.html', 'panchangam.html',
   'styles.css', 'app.js', 'build.js', 'serve.js', 'data.js',
   'sankalpam-regions.js', 'sankalpam-widget.js', 'sankalpam-sync.js',
-  'sankalpam-kalasha.js', 'sankalpam-quick.js', 'panchang-app.js',
+  'sankalpam-quick.js', 'panchang-app.js',
   'search.js', 'feed.xml', 'search-index.json', 'temples.json',
 ];
 REQUIRED.forEach(f => {
@@ -241,7 +241,7 @@ console.log('\n▶ Assets');
 
 // ---------- 12. CORRUPTION SWEEP ----------
 console.log('\n▶ Corruption sweep (JS files)');
-const JS_SCAN = ['sankalpam-regions.js', 'sankalpam-kalasha.js', 'app.js', 'build.js'];
+const JS_SCAN = ['sankalpam-regions.js', 'sankalpam-widget.js', 'app.js', 'build.js'];
 JS_SCAN.forEach(f => {
   const p = path.join(ROOT, f);
   if (!fs.existsSync(p)) return;
